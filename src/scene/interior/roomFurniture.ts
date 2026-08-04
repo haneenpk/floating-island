@@ -9,6 +9,7 @@ import {
   MeshStandardMaterial,
   PlaneGeometry,
   SRGBColorSpace,
+  TextureLoader,
   Vector3,
   type BufferGeometry,
   type Object3D,
@@ -263,19 +264,30 @@ export function buildFurniture(props: RoomProps): {
   group.add(map);
   interactables.push({ id: 'world', label: 'the world', object: map });
 
-  // the painting — Gallery (above the mantle)
+  // the painting — Gallery (above the mantle): the island itself, framed
   const painting = new Group();
-  painting.position.set(-ROOM_W / 2 + 0.42, 2.72, -0.6);
+  // on the flat brick band between the mantle (y 2.2) and the breast's
+  // step back at y 2.9; that face sits at x ≈ -3.88
+  painting.position.set(-3.84, 2.58, -0.6);
   painting.rotation.y = Math.PI / 2;
   const frame = new Mesh(
-    box(0.95, 0.72, 0.06),
+    box(0.78, 0.56, 0.06),
     new MeshStandardMaterial({ color: 0x6a4a2c, roughness: 0.6 }),
   );
   const art = new Mesh(
-    new PlaneGeometry(0.8, 0.58),
+    new PlaneGeometry(0.66, 0.46),
     new MeshStandardMaterial({ color: 0x7e97ae, roughness: 0.9 }),
   );
   art.position.z = 0.035;
+  // resolve art.material at load time: interactable registration clones
+  // materials (for hover glow), so a captured reference would go stale
+  new TextureLoader().load('/assets/textures/interior/painting.jpg', (texture) => {
+    texture.colorSpace = SRGBColorSpace;
+    const material = art.material as MeshStandardMaterial;
+    material.map = texture;
+    material.color.set(0xffffff);
+    material.needsUpdate = true;
+  });
   painting.add(frame, art);
   group.add(painting);
   interactables.push({ id: 'gallery', label: 'the gallery', object: painting });

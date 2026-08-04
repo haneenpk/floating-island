@@ -67,7 +67,8 @@ export class InteractionManager implements Updatable {
       downY = event.clientY;
     });
     window.addEventListener('click', (event) => {
-      // a drag-look release is not a click
+      // a drag-look release is not a click; panels swallow clicks entirely
+      if (document.body.classList.contains('overlay-open')) return;
       if (Math.hypot(event.clientX - downX, event.clientY - downY) > 6) return;
       if (this.hovered) this.hovered.onActivate();
     });
@@ -113,11 +114,13 @@ export class InteractionManager implements Updatable {
   update(time: Time): void {
     // pointer locked (first-person interior): aim from the screen centre,
     // re-testing every frame since the camera turns without pointer events
-    const locked = document.pointerLockElement !== null;
+    const overlayOpen = document.body.classList.contains('overlay-open');
+    const locked = document.pointerLockElement !== null && !overlayOpen;
     this.crosshair.classList.toggle('visible', locked);
     if (locked) this.pointer.set(0, 0);
+    if (overlayOpen && this.hovered) this.setHovered(null);
 
-    if (this.pointerDirty || locked) {
+    if (!overlayOpen && (this.pointerDirty || locked)) {
       this.pointerDirty = false;
       this.raycaster.setFromCamera(this.pointer, this.camera);
 

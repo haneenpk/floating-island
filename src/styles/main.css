@@ -273,3 +273,178 @@ body::-webkit-scrollbar {
 #interact-crosshair.visible {
   opacity: 1;
 }
+
+/* ---- storybook overlay panels (the cottage's clickable objects) ---- */
+#story-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 12, 20, 0.55);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+#story-panel.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.story-card {
+  position: relative;
+  width: min(600px, calc(100vw - 3rem));
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 2.4rem 2.6rem 2.2rem;
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(32, 27, 21, 0.97), rgba(22, 19, 16, 0.97));
+  border: 1px solid rgba(214, 190, 148, 0.28);
+  box-shadow: 0 30px 80px rgba(5, 8, 15, 0.6);
+  color: rgba(247, 243, 234, 0.92);
+  font-family: Georgia, 'Times New Roman', serif;
+  transform: translateY(14px);
+  transition: transform 0.45s ease;
+}
+
+#story-panel.visible .story-card {
+  transform: translateY(0);
+}
+
+.story-card.wide {
+  width: min(880px, calc(100vw - 3rem));
+}
+
+.story-card h2 {
+  margin: 0 0 1.2rem;
+  font-size: 1.15rem;
+  font-weight: normal;
+  font-style: italic;
+  letter-spacing: 0.32em;
+  text-transform: lowercase;
+  color: rgba(233, 213, 173, 0.95);
+}
+
+.story-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 1.1rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(247, 243, 234, 0.6);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.25s ease, background 0.25s ease;
+}
+
+.story-close:hover {
+  color: rgba(247, 243, 234, 1);
+  background: rgba(247, 243, 234, 0.08);
+}
+
+.story-body {
+  overflow-y: auto;
+  padding-right: 0.4rem;
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+.story-body p {
+  margin: 0 0 1rem;
+}
+
+.story-lede {
+  font-style: italic;
+  font-size: 1.06rem;
+  color: rgba(233, 213, 173, 0.95);
+}
+
+.story-sign {
+  text-align: right;
+  font-style: italic;
+  color: rgba(247, 243, 234, 0.55);
+}
+
+.story-quote {
+  text-align: center;
+  font-style: italic;
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  color: rgba(233, 213, 173, 0.95);
+}
+
+/* the world map */
+.world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 0.6rem;
+}
+
+.world-map .map-label text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 13px;
+  fill: rgba(247, 243, 234, 0.85);
+  text-anchor: middle;
+  letter-spacing: 0.08em;
+}
+
+.map-caption {
+  text-align: center;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: rgba(247, 243, 234, 0.55);
+}
+
+/* the gallery */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.1rem;
+}
+
+.gallery-grid figure {
+  margin: 0;
+}
+
+.gallery-grid img {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid rgba(214, 190, 148, 0.22);
+}
+
+.gallery-grid figcaption {
+  margin-top: 0.45rem;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: rgba(247, 243, 234, 0.6);
+  text-align: center;
+}
+
+/* the crystal */
+.crystal-glyph {
+  width: 14px;
+  height: 14px;
+  margin: 0.4rem auto 1.4rem;
+  border-radius: 50%;
+  background: #8fd8d2;
+  box-shadow: 0 0 18px 4px rgba(46, 143, 136, 0.7);
+  animation: crystal-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes crystal-breathe {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}

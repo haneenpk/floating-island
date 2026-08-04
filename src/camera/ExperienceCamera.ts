@@ -107,7 +107,7 @@ export class ExperienceCamera {
       this.parallax.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.parallax.y = (event.clientY / window.innerHeight) * 2 - 1;
 
-      if (this.phase === 'interior') {
+      if (this.phase === 'interior' && !document.body.classList.contains('overlay-open')) {
         // pointer locked: the mouse steers the view directly, like a game;
         // unlocked (e.g. after Esc) falls back to drag-look
         if (document.pointerLockElement) {
@@ -131,8 +131,13 @@ export class ExperienceCamera {
       this.dragging = true;
       this.lastPointerX = event.clientX;
       this.lastPointerY = event.clientY;
-      // regain game-style mouse look after the browser released it (Esc)
-      if (this.phase === 'interior' && !document.pointerLockElement) {
+      // regain game-style mouse look after the browser released it (Esc),
+      // but not while a story panel holds the cursor
+      if (
+        this.phase === 'interior' &&
+        !document.pointerLockElement &&
+        !document.body.classList.contains('overlay-open')
+      ) {
         this.requestPointerLock();
       }
     });
@@ -261,7 +266,9 @@ export class ExperienceCamera {
 
       case 'interior': {
         // first-person: drag to look, WASD/arrows to walk, eye height locked
-        const keys = this.keysDown;
+        // (all input pauses while a story panel is open)
+        const paused = document.body.classList.contains('overlay-open');
+        const keys = paused ? new Set<string>() : this.keysDown;
         const forwardIn =
           (keys.has('w') || keys.has('arrowup') ? 1 : 0) -
           (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
