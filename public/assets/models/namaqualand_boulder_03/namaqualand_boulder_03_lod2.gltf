@@ -1,0 +1,156 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.4.1",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 90516,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 15716,
+      "max": [
+        1.3522862195968628,
+        1.4584896564483643,
+        1.6756941080093384
+      ],
+      "min": [
+        -1.054810881614685,
+        -0.014703452587127686,
+        -1.3895807266235352
+      ],
+      "bufferView": 1,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 15716,
+      "bufferView": 1,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 15716,
+      "bufferView": 1,
+      "byteOffset": 24
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 181032,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 181032,
+      "byteLength": 502912,
+      "byteStride": 32,
+      "target": 34962
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "source": 1,
+      "sampler": 0
+    },
+    {
+      "source": 0,
+      "sampler": 0
+    },
+    {
+      "source": 2,
+      "sampler": 0
+    }
+  ],
+  "images": [
+    {
+      "name": "boulder_03_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/namaqualand_boulder_03_nor_gl_2k.jpg"
+    },
+    {
+      "name": "boulder_03_diff",
+      "mimeType": "image/jpeg",
+      "uri": "textures/namaqualand_boulder_03_diff_2k.jpg"
+    },
+    {
+      "name": "boulder_03_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/namaqualand_boulder_03_arm_2k.jpg"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "namaqualand_boulder_03_lod2.bin",
+      "byteLength": 683944
+    }
+  ],
+  "materials": [
+    {
+      "name": "boulder_03",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "realCap_Model_2",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "boulder_03_LOD0",
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0
+}

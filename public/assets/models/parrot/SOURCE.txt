@@ -1,0 +1,5 @@
+﻿Parrot (animated) by mirada, from ro.me ('3 Dreams of Black')
+Distributed with three.js examples.
+License: CC-BY 3.0 - attribution required (credit: mirada / ro.me)
+Source: https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Parrot.glb
+    

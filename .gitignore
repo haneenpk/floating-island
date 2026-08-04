@@ -1,0 +1,11 @@
+node_modules/
+dist/
+
+# Source archives — extract into public/assets via the asset pipeline
+refrence-models/
+
+# Extracted but unused by the app (86 MB)
+public/assets/models/island_tree_03/
+
+*.log
+.DS_Store

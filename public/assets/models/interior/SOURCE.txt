@@ -1,0 +1,9 @@
+﻿All models by Quaternius - CC0 (public domain), via poly.pizza:
+desk.glb      - https://poly.pizza/m/V86Go2rlnq
+chest.glb     - https://poly.pizza/m/IbCTSkyWDT
+closet.glb    - https://poly.pizza/m/BHEVb1DIuH
+open_book.glb - https://poly.pizza/m/FsCIGEfTEs
+bed.glb       - Bed Double - https://poly.pizza/m/BuRay4fVFr
+plant.glb     - Houseplant - https://poly.pizza/m/bfLOqIV5uP
+chair.glb     - Chair - https://poly.pizza/m/iMNqRzPwwe
+door.glb      - Arch Door - https://poly.pizza/m/MVVMLXOfg1

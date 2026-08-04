@@ -1,0 +1,25 @@
+{
+  "name": "island",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "assets:lods": "node scripts/generate-lods.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "4.4.1",
+    "@gltf-transform/extensions": "4.4.1",
+    "@gltf-transform/functions": "4.4.1",
+    "@types/three": "0.185.1",
+    "meshoptimizer": "1.2.0",
+    "sharp": "0.35.3",
+    "typescript": "7.0.2",
+    "vite": "8.1.4"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  }
+}

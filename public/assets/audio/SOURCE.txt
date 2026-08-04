@@ -1,0 +1,9 @@
+﻿All audio from Mixkit (https://mixkit.co) - Mixkit Sound Effects Free License
+(free for commercial use, no attribution required)
+
+wind_loop.mp3      - sfx 2658
+waterfall_loop.mp3 - sfx 2517
+river_loop.mp3     - sfx 2456
+forest_loop.mp3    - sfx 2434
+chirp_1..3.mp3     - segments of sfx 1185
+fire_loop.mp3      - sfx 1330 (campfire crackles, crossfade-looped)

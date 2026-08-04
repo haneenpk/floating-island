@@ -1,0 +1,2 @@
+﻿All textures from Poly Haven (https://polyhaven.com) - CC0:
+painted_plaster_wall, wood_floor, dark_wood, castle_brick_07

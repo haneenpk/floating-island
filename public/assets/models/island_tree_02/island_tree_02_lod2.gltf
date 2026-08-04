@@ -1,0 +1,406 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.4.1",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 27744,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 314025,
+      "bufferView": 0,
+      "byteOffset": 55488
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 109839,
+      "bufferView": 0,
+      "byteOffset": 1311588
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 5631,
+      "max": [
+        1.2416797876358032,
+        2.599152088165283,
+        2.2639734745025635
+      ],
+      "min": [
+        -1.1161692142486572,
+        -0.017011718824505806,
+        -0.45452672243118286
+      ],
+      "bufferView": 1,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 5631,
+      "bufferView": 1,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 5631,
+      "bufferView": 1,
+      "byteOffset": 24
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 159756,
+      "max": [
+        2.0115697383880615,
+        3.3892130851745605,
+        2.956543207168579
+      ],
+      "min": [
+        -1.8560643196105957,
+        1.247714877128601,
+        -1.1138885021209717
+      ],
+      "bufferView": 2,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 159756,
+      "bufferView": 2,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 159756,
+      "bufferView": 2,
+      "byteOffset": 24
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 31693,
+      "max": [
+        2.155407428741455,
+        3.339240789413452,
+        2.8902196884155273
+      ],
+      "min": [
+        -2.052337884902954,
+        1.2646872997283936,
+        -1.071148157119751
+      ],
+      "bufferView": 3,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 31693,
+      "bufferView": 3,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 31693,
+      "bufferView": 3,
+      "byteOffset": 24
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 1531268,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1531268,
+      "byteLength": 180192,
+      "byteStride": 32,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1711460,
+      "byteLength": 5112192,
+      "byteStride": 32,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 6823652,
+      "byteLength": 1014176,
+      "byteStride": 32,
+      "target": 34962
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "source": 1,
+      "sampler": 0
+    },
+    {
+      "source": 0,
+      "sampler": 0
+    },
+    {
+      "source": 2,
+      "sampler": 0
+    },
+    {
+      "source": 4,
+      "sampler": 0
+    },
+    {
+      "source": 3,
+      "sampler": 0
+    },
+    {
+      "source": 5,
+      "sampler": 0
+    },
+    {
+      "source": 7,
+      "sampler": 0
+    },
+    {
+      "source": 6,
+      "sampler": 0
+    },
+    {
+      "source": 8,
+      "sampler": 0
+    }
+  ],
+  "images": [
+    {
+      "name": "island_tree_02_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_nor_gl_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_diff",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_diff_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_arm_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_leaves_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_leaves_nor_gl_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_leaves_diff-island_tree_02_leaves_alpha",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_leaves_diff_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_leaves_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_leaves_arm_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_branches_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_branches_nor_gl_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_branches_diff",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_branches_diff_2k.jpg"
+    },
+    {
+      "name": "island_tree_02_branches_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/island_tree_02_branches_arm_2k.jpg"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "island_tree_02_lod2.bin",
+      "byteLength": 7837828
+    }
+  ],
+  "materials": [
+    {
+      "name": "island_tree_02",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    },
+    {
+      "name": "island_tree_02_leaves",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 3
+        },
+        "metallicRoughnessTexture": {
+          "index": 5
+        }
+      },
+      "normalTexture": {
+        "index": 4
+      }
+    },
+    {
+      "name": "island_tree_02_branches",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 6,
+          "extensions": {
+            "KHR_texture_transform": {
+              "offset": [
+                0,
+                -2.4000000953674316
+              ],
+              "scale": [
+                15,
+                3.4000000953674316
+              ]
+            }
+          }
+        },
+        "metallicRoughnessTexture": {
+          "index": 8,
+          "extensions": {
+            "KHR_texture_transform": {
+              "offset": [
+                0,
+                -2.4000000953674316
+              ],
+              "scale": [
+                15,
+                3.4000000953674316
+              ]
+            }
+          }
+        }
+      },
+      "normalTexture": {
+        "index": 7,
+        "scale": 0.5,
+        "extensions": {
+          "KHR_texture_transform": {
+            "offset": [
+              0,
+              -2.4000000953674316
+            ],
+            "scale": [
+              15,
+              3.4000000953674316
+            ]
+          }
+        }
+      },
+      "extensions": {
+        "KHR_materials_ior": {
+          "ior": 1.4500000476837158
+        },
+        "KHR_materials_specular": {
+          "specularFactor": 0.4100000262260437
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "mesh.001",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 3,
+            "NORMAL": 4,
+            "TEXCOORD_0": 5
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        },
+        {
+          "attributes": {
+            "POSITION": 6,
+            "NORMAL": 7,
+            "TEXCOORD_0": 8
+          },
+          "mode": 4,
+          "material": 1,
+          "indices": 1
+        },
+        {
+          "attributes": {
+            "POSITION": 9,
+            "NORMAL": 10,
+            "TEXCOORD_0": 11
+          },
+          "mode": 4,
+          "material": 2,
+          "indices": 2
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "island_tree_02_LOD0",
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "extensionsUsed": [
+    "KHR_materials_ior",
+    "KHR_materials_specular",
+    "KHR_texture_transform"
+  ],
+  "extensionsRequired": [
+    "KHR_texture_transform"
+  ]
+}
