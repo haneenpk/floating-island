@@ -60,15 +60,10 @@ export class InteractionManager implements Updatable {
       );
       this.pointerDirty = true;
     });
-    let downX = 0;
-    let downY = 0;
-    window.addEventListener('pointerdown', (event) => {
-      downX = event.clientX;
-      downY = event.clientY;
-    });
-    window.addEventListener('click', (event) => {
-      // a drag-look release is not a click
-      if (Math.hypot(event.clientX - downX, event.clientY - downY) > 6) return;
+    // game-style interaction: focus something, press E
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat || event.key.toLowerCase() !== 'e') return;
+      if (document.body.classList.contains('overlay-open')) return;
       if (this.hovered) this.hovered.onActivate();
     });
   }
@@ -113,11 +108,13 @@ export class InteractionManager implements Updatable {
   update(time: Time): void {
     // pointer locked (first-person interior): aim from the screen centre,
     // re-testing every frame since the camera turns without pointer events
-    const locked = document.pointerLockElement !== null;
+    const overlayOpen = document.body.classList.contains('overlay-open');
+    const locked = document.pointerLockElement !== null && !overlayOpen;
     this.crosshair.classList.toggle('visible', locked);
     if (locked) this.pointer.set(0, 0);
+    if (overlayOpen && this.hovered) this.setHovered(null);
 
-    if (this.pointerDirty || locked) {
+    if (!overlayOpen && (this.pointerDirty || locked)) {
       this.pointerDirty = false;
       this.raycaster.setFromCamera(this.pointer, this.camera);
 
@@ -167,7 +164,11 @@ export class InteractionManager implements Updatable {
     this.hovered = item;
     document.body.style.cursor = item ? 'pointer' : '';
     if (item) {
-      this.caption.textContent = item.label;
+      this.caption.replaceChildren();
+      const key = document.createElement('span');
+      key.className = 'key-hint';
+      key.textContent = 'E';
+      this.caption.append(key, item.label);
       this.caption.classList.add('visible');
     } else {
       this.caption.classList.remove('visible');

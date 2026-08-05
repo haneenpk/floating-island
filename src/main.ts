@@ -18,6 +18,8 @@ import { FloatingIsland } from './scene/islands/FloatingIsland';
 import { initIslandMaterials } from './scene/islands/islandMaterials';
 import { Lighting } from './scene/lighting/Lighting';
 import { maybeCreateWaterSystem } from './scene/water/WaterSystem';
+import { getPanelContent } from './ui/panelContent';
+import { StoryPanel } from './ui/StoryPanel';
 import { hasDebugFlag } from './utils/debug';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#webgl');
@@ -146,10 +148,15 @@ async function bootstrap(): Promise<void> {
   room.updateMatrixWorld(true);
   engine.sceneManager.register(room);
 
+  // the room's objects open the storybook panels — the cottage is the menu
+  const storyPanel = new StoryPanel();
+  const panelContent = getPanelContent();
   for (const item of room.interactables) {
-    interaction.register(item.object, 'interior', item.label, () =>
-      interaction.announce(`${item.label} — coming soon`),
-    );
+    const content = panelContent[item.id];
+    interaction.register(item.object, 'interior', item.label, () => {
+      if (content) storyPanel.show(content);
+      else interaction.announce(`${item.label} — coming soon`);
+    });
   }
   interaction.setGroupEnabled('interior', false);
 
@@ -173,6 +180,9 @@ async function bootstrap(): Promise<void> {
       new FadeOverlay(),
       [butterfly],
       audio,
+      (inside) => {
+        engine.postSuspended = inside;
+      },
     );
     engine.sceneManager.register(portal);
 
@@ -201,13 +211,18 @@ async function bootstrap(): Promise<void> {
       interaction.setGroupEnabled('exterior', false);
       document.documentElement.style.overflow = 'hidden';
       audio.setIndoor(true, room.getWindowWorld());
+      engine.postSuspended = true;
     };
     devWindow['__devInside'] = devEnterInside;
+    devWindow['__devPanel'] = (id: string) => {
+      const content = panelContent[id];
+      if (content) storyPanel.show(content);
+    };
     devWindow['__devReady'] = true;
 
     if (DEV_START_INSIDE) {
       devEnterInside();
-      interaction.announce('drag to look — w a s d to walk');
+      interaction.announce('move the mouse to look — w a s d to walk — E to interact');
       window.addEventListener('pointerdown', () => void audio.begin(heroIsland), { once: true });
     } else {
       const nav = new SiteNav();
