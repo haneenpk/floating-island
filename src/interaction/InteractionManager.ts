@@ -60,16 +60,10 @@ export class InteractionManager implements Updatable {
       );
       this.pointerDirty = true;
     });
-    let downX = 0;
-    let downY = 0;
-    window.addEventListener('pointerdown', (event) => {
-      downX = event.clientX;
-      downY = event.clientY;
-    });
-    window.addEventListener('click', (event) => {
-      // a drag-look release is not a click; panels swallow clicks entirely
+    // game-style interaction: focus something, press E
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat || event.key.toLowerCase() !== 'e') return;
       if (document.body.classList.contains('overlay-open')) return;
-      if (Math.hypot(event.clientX - downX, event.clientY - downY) > 6) return;
       if (this.hovered) this.hovered.onActivate();
     });
   }
@@ -170,7 +164,11 @@ export class InteractionManager implements Updatable {
     this.hovered = item;
     document.body.style.cursor = item ? 'pointer' : '';
     if (item) {
-      this.caption.textContent = item.label;
+      this.caption.replaceChildren();
+      const key = document.createElement('span');
+      key.className = 'key-hint';
+      key.textContent = 'E';
+      this.caption.append(key, item.label);
       this.caption.classList.add('visible');
     } else {
       this.caption.classList.remove('visible');

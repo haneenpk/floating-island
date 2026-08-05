@@ -253,6 +253,19 @@ body::-webkit-scrollbar {
   transform: translateX(-50%) translateY(0);
 }
 
+#interact-caption .key-hint {
+  display: inline-block;
+  margin-right: 0.7em;
+  padding: 0.05em 0.5em 0.1em;
+  border: 1px solid rgba(247, 243, 234, 0.55);
+  border-radius: 5px;
+  font-style: normal;
+  font-size: 0.82em;
+  letter-spacing: 0;
+  color: rgba(247, 243, 234, 0.95);
+  background: rgba(15, 22, 36, 0.35);
+}
+
 /* aim dot shown while the pointer is locked (first-person interior look) */
 #interact-crosshair {
   position: fixed;

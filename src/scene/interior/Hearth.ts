@@ -360,6 +360,7 @@ export class Hearth extends Group {
     this.add(new Mesh(mergeGeometries(coalChunks)!, this.coals));
 
     // ---- layered flames: crossing planes fake a volume ----
+    // (post-processing is suspended while indoors, so no bloom compensation)
     const flamePlane = (
       width: number,
       height: number,

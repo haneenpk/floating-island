@@ -180,6 +180,9 @@ async function bootstrap(): Promise<void> {
       new FadeOverlay(),
       [butterfly],
       audio,
+      (inside) => {
+        engine.postSuspended = inside;
+      },
     );
     engine.sceneManager.register(portal);
 
@@ -208,6 +211,7 @@ async function bootstrap(): Promise<void> {
       interaction.setGroupEnabled('exterior', false);
       document.documentElement.style.overflow = 'hidden';
       audio.setIndoor(true, room.getWindowWorld());
+      engine.postSuspended = true;
     };
     devWindow['__devInside'] = devEnterInside;
     devWindow['__devPanel'] = (id: string) => {
@@ -218,7 +222,7 @@ async function bootstrap(): Promise<void> {
 
     if (DEV_START_INSIDE) {
       devEnterInside();
-      interaction.announce('drag to look — w a s d to walk');
+      interaction.announce('move the mouse to look — w a s d to walk — E to interact');
       window.addEventListener('pointerdown', () => void audio.begin(heroIsland), { once: true });
     } else {
       const nav = new SiteNav();
