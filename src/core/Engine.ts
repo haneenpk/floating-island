@@ -30,6 +30,8 @@ export class Engine {
   readonly cameraControl: CameraControl;
   private readonly watchdog = new PerformanceWatchdog();
   private readonly post: PostPipeline | null;
+  /** the cottage interior renders plain (no bloom/postfx) on every tier */
+  postSuspended = false;
 
   constructor(canvas: HTMLCanvasElement) {
     const quality = getQuality();
@@ -84,7 +86,7 @@ export class Engine {
     this.cameraControl.update(this.time);
     this.sceneManager.update(this.time);
 
-    if (this.post) {
+    if (this.post && !this.postSuspended) {
       this.post.render();
     } else {
       this.renderer.render(this.sceneManager.scene, this.camera);

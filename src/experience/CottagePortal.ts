@@ -33,6 +33,8 @@ export class CottagePortal implements Updatable {
     // exterior objects that would clip into the room volume while inside
     private readonly alsoHide: Object3D[] = [],
     private readonly audio: AudioSystem | null = null,
+    // notified behind the fades: true entering the room, false leaving
+    private readonly onWorldSwap: ((inside: boolean) => void) | null = null,
   ) {
     const surface = island.surface;
     const dirX = Math.cos(HOUSE_ANGLE);
@@ -110,13 +112,14 @@ export class CottagePortal implements Updatable {
         this.smoke.visible = false;
         for (const object of this.alsoHide) object.visible = false;
         this.audio?.setIndoor(true, this.room.getWindowWorld());
+        this.onWorldSwap?.(true);
         this.room.updateMatrixWorld(true);
         const pose = this.room.getCameraPose();
         this.experience.enterInterior(pose.position, pose.target, this.room.getWalkConstraint());
         this.interaction.setGroupEnabled('interior', true);
         if (this.houseDoor) this.houseDoor.target = 0;
         await this.fade.toClear(0.9);
-        this.interaction.announce('drag to look — w a s d to walk');
+        this.interaction.announce('move the mouse to look — w a s d to walk — E to interact');
         this.busy = false;
       })();
     });
@@ -133,6 +136,7 @@ export class CottagePortal implements Updatable {
     this.smoke.visible = true;
     for (const object of this.alsoHide) object.visible = true;
     this.audio?.setIndoor(false);
+    this.onWorldSwap?.(false);
     this.island.driftPaused = false;
     this.experience.resumeJourney();
     document.documentElement.style.overflow = '';

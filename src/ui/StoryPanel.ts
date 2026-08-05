@@ -15,6 +15,7 @@ export class StoryPanel {
   private readonly card: HTMLDivElement;
   private readonly title: HTMLHeadingElement;
   private readonly body: HTMLDivElement;
+  private relockOnClose = false;
 
   constructor() {
     this.backdrop = document.createElement('div');
@@ -57,6 +58,7 @@ export class StoryPanel {
     this.backdrop.classList.add('visible');
     // reading needs the cursor back; walking/looking pause via this class
     document.body.classList.add('overlay-open');
+    this.relockOnClose = document.pointerLockElement !== null;
     if (document.pointerLockElement) document.exitPointerLock();
     this.body.scrollTop = 0;
   }
@@ -64,5 +66,17 @@ export class StoryPanel {
   hide(): void {
     this.backdrop.classList.remove('visible');
     document.body.classList.remove('overlay-open');
+    // hand the mouse straight back to game-style look (closing is a user
+    // gesture, so the browser allows the re-capture)
+    if (this.relockOnClose) {
+      this.relockOnClose = false;
+      const canvas = document.querySelector<HTMLCanvasElement>('#webgl');
+      try {
+        const result = canvas?.requestPointerLock() as unknown;
+        if (result instanceof Promise) result.catch(() => undefined);
+      } catch {
+        // denied is fine — the next click in the room re-captures
+      }
+    }
   }
 }

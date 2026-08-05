@@ -1,4 +1,4 @@
-﻿export type QualityTier = 'low' | 'medium' | 'high';
+﻿export type QualityTier = 'low' | 'medium';
 
 export type ModelVariant = '2k' | 'lod1' | 'lod2';
 
@@ -67,34 +67,13 @@ const PROFILES: Record<QualityTier, QualityProfile> = {
     pollenCount: 100,
     cottageLight: true,
   },
-  high: {
-    tier: 'high',
-    pixelRatioCap: 2,
-    antialias: true,
-    shadowMapSize: 4096,
-    shadowRadius: 5,
-    textureSuffix: '2k',
-    anisotropy: 8,
-    islandDetail: 1,
-    heroModelVariant: '2k',
-    foliageModelVariant: 'lod1',
-    treeBudget: 4,
-    grassDensity: 1,
-    flowerDensity: 1,
-    animateIsland: true,
-    dynamicShadows: true,
-    postProcessing: true,
-    cloudCount: 20,
-    pollenCount: 160,
-    cottageLight: true,
-  },
 };
 
 const STORAGE_KEY = 'island:quality';
-const TIER_ORDER: QualityTier[] = ['high', 'medium', 'low'];
+const TIER_ORDER: QualityTier[] = ['medium', 'low'];
 
 function isTier(value: unknown): value is QualityTier {
-  return value === 'low' || value === 'medium' || value === 'high';
+  return value === 'low' || value === 'medium';
 }
 
 function detectTier(): QualityTier {
@@ -114,10 +93,8 @@ function detectTier(): QualityTier {
 
   const weakGpu =
     /GT ?7[0-4]0|GT ?6\d0|GT ?5\d0|GTX ?[4-6]\d0\b|Radeon ?(HD|R5)|HD Graphics|UHD Graphics 6\d\d|Mali|Adreno|SwiftShader|llvmpipe/i;
-  const strongGpu = /RTX|GTX 1[6-9]\d0|GTX 10[6-8]0|Radeon RX|Apple (M\d|GPU)/i;
 
   if (weakGpu.test(gpu) || deviceMemory <= 4) return 'low';
-  if (strongGpu.test(gpu)) return 'high';
   return 'medium';
 }
 
