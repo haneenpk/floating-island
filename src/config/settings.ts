@@ -10,13 +10,17 @@ export const settings = {
     initialPosition: { x: 31, y: 1, z: 57 },
     initialTarget: { x: 2.5, y: 8, z: 0 },
   },
-  // golden hour: deep dusty blue overhead melting into honeyed haze
+  // Golden hour, and only on the sun's side: honey where the sun sits,
+  // cool dusk opposite it, deep dusty blue overhead.
   atmosphere: {
     zenithColor: 0x3c6bb4,
     skyColor: 0x8fb8d8,
-    horizonColor: 0xf6c17f,
-    groundColor: 0xd8b494,
-    fogColor: 0xdcc3a4,
+    horizonWarmColor: 0xf2bd83,
+    horizonCoolColor: 0xa7aecf,
+    groundColor: 0xc2b8a6,
+    // one fog colour has to serve both sides of the sky: keep it a warm
+    // neutral so distance reads hazy, not grey
+    fogColor: 0xd8cfc0,
     fogNear: 70,
     fogFar: 340,
   },
