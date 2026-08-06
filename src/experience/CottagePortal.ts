@@ -76,7 +76,15 @@ export class CottagePortal implements Updatable {
     );
     exitHit.position.copy(room.getExitDoorWorld());
     room.attach(exitHit);
-    this.interaction.register(exitHit, 'interior', 'return outside', () => void this.exit());
+    this.interaction.register(
+      exitHit,
+      'interior',
+      'return outside',
+      () => void this.exit(),
+      exitHit,
+      false,
+      2.4,
+    );
     this.interaction.setGroupEnabled('interior', false);
   }
 

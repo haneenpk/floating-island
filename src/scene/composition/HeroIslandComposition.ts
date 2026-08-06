@@ -21,6 +21,7 @@ import {
   type PlacementCategory,
 } from "../placement/SurfacePlacer";
 import type { Updatable } from "../Updatable";
+import { GardenDressing } from "./GardenDressing";
 import { instanceModelAt, type InstancePoint } from "./instancedModelScatter";
 
 const windBox = new Box3();
@@ -132,6 +133,11 @@ type ModelKey = keyof typeof MODEL_FILES;
 const HOUSE_KEY = "fantasyHouse";
 const HOUSE_URL = "/assets/models/fantasy_house/fantasy_house.glb";
 const HOUSE_TARGET_HEIGHT = 7.6;
+// where the cottage stands and which way its door faces — the portal,
+// garden dressing and worn path all key off these
+const HOUSE_RADIAL = 0.44;
+const HOUSE_ANGLE = 6.05;
+const HOUSE_YAW = 0.67;
 
 const TREE_KEYS: ReadonlySet<ModelKey> = new Set([
   "islandTreeLarge",
@@ -338,8 +344,8 @@ export async function composeHeroIsland(
   {
     const bounds = new Box3().setFromObject(house);
     const scale = HOUSE_TARGET_HEIGHT / (bounds.max.y - bounds.min.y);
-    const { x, z } = planarPoint(island, 0.44, 6.05);
-    placer.placeObject(house, "structure", x, z, 0.67, scale);
+    const { x, z } = planarPoint(island, HOUSE_RADIAL, HOUSE_ANGLE);
+    placer.placeObject(house, "structure", x, z, HOUSE_YAW, scale);
     dressing.add(house);
 
     // signs of life: glowing windows, a warm lamp spill, chimney smoke and
@@ -358,24 +364,28 @@ export async function composeHeroIsland(
       });
     });
 
-    const placedBounds = new Box3().setFromObject(house);
-    const houseTop = new Vector3();
-    placedBounds.getCenter(houseTop);
-    smoke = new CottageSmoke(new Vector3(houseTop.x, placedBounds.max.y - 0.2, houseTop.z));
+    // Smoke rises from the ridge. Deriving that from world bounds after
+    // placement does not work: the model's child matrices are baked
+    // (matrixAutoUpdate = false), so setFromObject reports the unplaced
+    // model. The pad height plus HOUSE_TARGET_HEIGHT is exact by
+    // construction, so use that.
+    const pad = island.surface.getHeightAt(x, z);
+    smoke = new CottageSmoke(new Vector3(x, pad + HOUSE_TARGET_HEIGHT - 0.7, z));
     dressing.add(smoke);
     updatables.push(smoke);
 
     if (getQuality().cottageLight) {
       // subtle: a hint of warmth at the walls, not a spotlight pool on the lawn
       const lamp = new PointLight(0xffc27a, 0.9, 7, 2);
-      lamp.position.set(x, island.surface.getHeightAt(x, z) + 3.2, z);
+      lamp.position.set(x, pad + 3.2, z);
       dressing.add(lamp);
     }
 
-    const doorward = 1 / Math.hypot(x, z);
+    // worn earth in front of the door — the door faces the house's yaw, not
+    // the island's centre, so follow that same forward vector
     const wear = createWornGround(1.5);
-    const wearX = x - x * doorward * 2.4;
-    const wearZ = z - z * doorward * 2.4;
+    const wearX = x + Math.sin(HOUSE_YAW) * 2.2;
+    const wearZ = z + Math.cos(HOUSE_YAW) * 2.2;
     wear.position.set(wearX, island.surface.getHeightAt(wearX, wearZ) + 0.04, wearZ);
     dressing.add(wear);
   }
@@ -393,6 +403,11 @@ export async function composeHeroIsland(
   for (const zone of activeZones) {
     dressing.add(placeDrift(island, assets, placer, zone, random));
   }
+
+  // the lived-in garden layer: lanterns, lamp post, fences, stepping stones
+  const garden = new GardenDressing(island.surface);
+  dressing.add(garden);
+  updatables.push(garden);
 
   island.add(dressing);
   island.updateMatrixWorld(true);
