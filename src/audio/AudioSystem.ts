@@ -13,7 +13,9 @@ import type { FloatingIsland } from '../scene/islands/FloatingIsland';
 import type { Updatable } from '../scene/Updatable';
 
 const ROOT = '/assets/audio';
-const FADE_RATE = 0.45;
+// gentle master fade: the world's voice swells in over the fly-in rather
+// than switching on at the Enter click
+const FADE_RATE = 0.18;
 
 export const TOGGLE_AUDIO_EVENT = 'island:toggle-audio';
 
@@ -28,6 +30,7 @@ export class AudioSystem implements Updatable {
   private targetVolume = 0;
   private muted = false;
   private begun = false;
+  private masterRate = FADE_RATE;
 
   // indoors the world's voice drops to a murmur; near the open round
   // window it drifts back in. The hearth's own crackle is exempt.
@@ -48,6 +51,8 @@ export class AudioSystem implements Updatable {
 
     window.addEventListener(TOGGLE_AUDIO_EVENT, () => {
       this.muted = !this.muted;
+      // the sound toggle should answer quickly; only the first swell is slow
+      this.masterRate = 1.4;
     });
   }
 
@@ -146,7 +151,9 @@ export class AudioSystem implements Updatable {
 
     const goal = this.muted ? 0 : this.targetVolume;
     const current = this.listener.getMasterVolume();
-    this.listener.setMasterVolume(current + (goal - current) * (1 - Math.exp(-time.delta * FADE_RATE)));
+    this.listener.setMasterVolume(
+      current + (goal - current) * (1 - Math.exp(-time.delta * this.masterRate)),
+    );
 
     if (!this.begun || this.muted || this.chirpBuffers.length === 0) return;
 

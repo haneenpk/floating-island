@@ -119,7 +119,9 @@ export class CottagePortal implements Updatable {
         this.interaction.setGroupEnabled('interior', true);
         if (this.houseDoor) this.houseDoor.target = 0;
         await this.fade.toClear(0.9);
-        this.interaction.announce('move the mouse to look — w a s d to walk — E to interact');
+        this.interaction.announce(
+          'move the mouse to look — w a s d to walk — E to interact — M for sound',
+        );
         this.busy = false;
       })();
     });

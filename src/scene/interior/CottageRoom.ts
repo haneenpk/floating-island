@@ -137,6 +137,19 @@ export class CottageRoom extends Group implements Updatable {
       return 0;
     };
 
+    // furniture collision boxes (room-local AABBs); the player is a circle
+    const RADIUS = 0.34;
+    const OBSTACLES: { x0: number; x1: number; z0: number; z1: number; loft?: boolean }[] = [
+      { x0: 1.05, x1: 2.75, z0: 0.5, z1: 1.55 }, // desk (and what sits on it)
+      { x0: 0.62, x1: 1.28, z0: 1.68, z1: 2.35 }, // chair
+      { x0: -3.95, x1: -3.05, z0: 2.0, z1: 2.8 }, // chest
+      { x0: 3.85, x1: 4.8, z0: 2.0, z1: 3.2 }, // closet
+      { x0: -4.25, x1: -3.55, z0: -3.5, z1: -2.7 }, // corner plant
+      { x0: 2.6, x1: 4.45, z0: 0.4, z1: 2.6, loft: true }, // bed
+      { x0: -3.7, x1: -3.1, z0: 2.3, z1: 2.95, loft: true }, // loft plant
+      { x0: 0.72, x1: 1.28, z0: 2.72, z1: 3.28, loft: true }, // loft lantern
+    ];
+
     return (position: Vector3) => {
       this.worldToLocal(local.copy(position));
 
@@ -148,6 +161,57 @@ export class CottageRoom extends Group implements Updatable {
       }
 
       const feet = (lastEyeY ?? local.y) - EYE;
+
+      // smooth circle-vs-box: push the player out with the same continuous
+      // resolution everywhere, so no blocker ever snaps or jitters
+      const pushOut = (x0: number, x1: number, z0: number, z1: number): void => {
+        const nearestX = Math.min(Math.max(local.x, x0), x1);
+        const nearestZ = Math.min(Math.max(local.z, z0), z1);
+        const dx = local.x - nearestX;
+        const dz = local.z - nearestZ;
+        const distSq = dx * dx + dz * dz;
+        if (distSq >= RADIUS * RADIUS) return;
+        if (distSq > 1e-6) {
+          const dist = Math.sqrt(distSq);
+          local.x = nearestX + (dx / dist) * RADIUS;
+          local.z = nearestZ + (dz / dist) * RADIUS;
+        } else {
+          // centre ended up inside the box: exit through the nearest face
+          const exits = [
+            { d: local.x - x0, x: x0 - RADIUS, z: local.z },
+            { d: x1 - local.x, x: x1 + RADIUS, z: local.z },
+            { d: local.z - z0, x: local.x, z: z0 - RADIUS },
+            { d: z1 - local.z, x: local.x, z: z1 + RADIUS },
+          ];
+          exits.sort((a, b) => a.d - b.d);
+          local.x = exits[0]!.x;
+          local.z = exits[0]!.z;
+        }
+      };
+
+      // the staircase is solid from every side unless your feet match the
+      // ramp (entering at the bottom or the top landing) — never through
+      // the handrail, its end, or under the steps
+      const bandZmax = STAIR_Z1 + 0.1;
+      const bandX0 = STAIR_X0 - 0.2;
+      const bandX1 = STAIR_X1 + 0.45;
+      const t = Math.min(Math.max((local.x - STAIR_X0) / (STAIR_X1 - STAIR_X0), 0), 1);
+      if (Math.abs(feet - t * UPPER_Y) > 0.8) {
+        pushOut(bandX0, bandX1, -ROOM_D / 2, bandZmax);
+      }
+      // …and once you're up on the ramp, the handrail holds you in: no
+      // stepping off the open side mid-climb (the first low steps are free)
+      if (local.x > bandX0 && local.x < bandX1 && feet > 0.55 && feet < UPPER_Y - 0.35) {
+        local.z = Math.min(local.z, bandZmax);
+      }
+
+      // furniture on the current floor
+      const onLoft = feet > UPPER_Y - 0.65;
+      for (const o of OBSTACLES) {
+        if ((o.loft === true) !== onLoft) continue;
+        pushOut(o.x0, o.x1, o.z0, o.z1);
+      }
+
       const targetEye = floorHeightAt(local.x, local.z, feet) + EYE;
       lastEyeY = lastEyeY === null ? targetEye : lastEyeY + (targetEye - lastEyeY) * 0.22;
       local.y = lastEyeY;
