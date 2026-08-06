@@ -28,7 +28,38 @@ if (!canvas) {
   throw new Error('Canvas element #webgl not found');
 }
 
-const engine = new Engine(canvas);
+// ---- boot screen: progress while the world loads, graceful failure ----
+const bootRoot = document.getElementById('boot');
+const bootFill = document.querySelector<HTMLElement>('#boot .boot-fill');
+const bootNote = document.querySelector<HTMLElement>('#boot .boot-note');
+
+function bootFail(message: string): void {
+  if (bootNote) bootNote.textContent = message;
+  bootFill?.parentElement?.remove();
+}
+
+function bootFinish(): void {
+  if (bootFill) bootFill.style.width = '100%';
+  window.setTimeout(() => {
+    bootRoot?.classList.add('done');
+    window.setTimeout(() => bootRoot?.remove(), 1300);
+  }, 250);
+}
+
+let engine: Engine;
+try {
+  engine = new Engine(canvas);
+} catch (error) {
+  bootFail('this little world needs WebGL — please try another browser');
+  throw error;
+}
+
+// LoadingManager totals grow as loads enqueue, so keep the bar monotonic
+let bootProgress = 0;
+engine.assets.onProgress((_url, loaded, total) => {
+  if (total > 0) bootProgress = Math.max(bootProgress, loaded / total);
+  if (bootFill) bootFill.style.width = `${Math.round(bootProgress * 96)}%`;
+});
 
 // TESTING ONLY: boot straight into the cottage interior, skipping the
 // landing overlay, intro and journey. Set back to false to restore the
@@ -116,7 +147,9 @@ async function bootstrap(): Promise<void> {
     // at the house's exact spot; lifted just enough that the meadow's
     // rocks and mounds stay below the ground floor (the hero tree is
     // hidden while inside — its canopy overlaps the loft)
-    new Vector3(houseX, heroIsland.surface.getHeightAt(houseX, houseZ) + 0.55, houseZ),
+    // 0.85: the meadow crests slightly higher under medium's terrain
+    // tessellation — this keeps it below the floor on every tier
+    new Vector3(houseX, heroIsland.surface.getHeightAt(houseX, houseZ) + 0.85, houseZ),
     {
       plant,
       chair,
@@ -170,6 +203,7 @@ async function bootstrap(): Promise<void> {
         import('./experience/CottagePortal'),
       ]);
 
+    const nav = new SiteNav();
     const portal = new CottagePortal(
       heroIsland,
       composition.house,
@@ -182,6 +216,7 @@ async function bootstrap(): Promise<void> {
       audio,
       (inside) => {
         engine.postSuspended = inside;
+        nav.setInterior(inside);
       },
     );
     engine.sceneManager.register(portal);
@@ -212,6 +247,7 @@ async function bootstrap(): Promise<void> {
       document.documentElement.style.overflow = 'hidden';
       audio.setIndoor(true, room.getWindowWorld());
       engine.postSuspended = true;
+      nav.setInterior(true);
     };
     devWindow['__devInside'] = devEnterInside;
     devWindow['__devPanel'] = (id: string) => {
@@ -222,10 +258,11 @@ async function bootstrap(): Promise<void> {
 
     if (DEV_START_INSIDE) {
       devEnterInside();
-      interaction.announce('move the mouse to look — w a s d to walk — E to interact');
+      interaction.announce(
+        'move the mouse to look — w a s d to walk — E to interact — M for sound',
+      );
       window.addEventListener('pointerdown', () => void audio.begin(heroIsland), { once: true });
     } else {
-      const nav = new SiteNav();
       const overlay = new LandingOverlay(() => {
         experience.enter();
         void audio.begin(heroIsland);
@@ -245,6 +282,8 @@ async function bootstrap(): Promise<void> {
     const { buildPlacementDebugOverlay } = await import('./scene/placement/PlacementDebug');
     heroIsland.add(buildPlacementDebugOverlay());
   }
+
+  bootFinish();
 }
 
 async function addFauna(island: FloatingIsland): Promise<Butterfly> {
@@ -284,4 +323,5 @@ async function addFauna(island: FloatingIsland): Promise<Butterfly> {
 
 void bootstrap().catch((error) => {
   console.error('Failed to bootstrap experience', error);
+  bootFail('the island failed to load — please refresh');
 });
