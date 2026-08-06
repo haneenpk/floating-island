@@ -3,11 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Island</title>
+    <title>Aetheria — a little world above the clouds</title>
+    <meta
+      name="description"
+      content="A cinematic floating island in your browser. Drift above the cloud sea, follow the river to the falls, and step inside the Keeper's cottage."
+    />
+    <meta name="theme-color" content="#0f1624" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Aetheria — a little world above the clouds" />
+    <meta
+      property="og:description"
+      content="A cinematic floating island in your browser. Drift above the cloud sea, follow the river to the falls, and step inside the Keeper's cottage."
+    />
+    <meta property="og:image" content="/assets/gallery/the_island.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+
     <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
     <canvas id="webgl"></canvas>
+    <!-- paints instantly, long before the world is ready -->
+    <div id="boot">
+      <div class="boot-title">AETHERIA</div>
+      <div class="boot-bar"><div class="boot-fill"></div></div>
+      <div class="boot-note">gathering the clouds&hellip;</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

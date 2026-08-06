@@ -12,6 +12,9 @@ const CREDITS = [
 export class SiteNav {
   private readonly root: HTMLElement;
   private readonly panel: HTMLDivElement;
+  private readonly soundButton: HTMLButtonElement;
+  private soundOn = true;
+  private interior = false;
 
   constructor() {
     this.root = document.createElement('nav');
@@ -34,13 +37,28 @@ export class SiteNav {
       this.panel.classList.toggle('open');
     });
 
-    const sound = this.root.querySelector<HTMLButtonElement>('.nav-sound')!;
-    let soundOn = true;
-    sound.addEventListener('click', () => {
-      soundOn = !soundOn;
-      sound.textContent = soundOn ? 'sound · on' : 'sound · off';
-      window.dispatchEvent(new CustomEvent(TOGGLE_AUDIO_EVENT));
+    this.soundButton = this.root.querySelector<HTMLButtonElement>('.nav-sound')!;
+    this.soundButton.addEventListener('click', () => this.toggleSound());
+
+    // inside the cottage the cursor is captured — M toggles the sound
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat || event.key.toLowerCase() !== 'm') return;
+      if (!this.interior) return;
+      this.toggleSound();
     });
+  }
+
+  private toggleSound(): void {
+    this.soundOn = !this.soundOn;
+    this.soundButton.textContent = this.soundOn ? 'sound · on' : 'sound · off';
+    window.dispatchEvent(new CustomEvent(TOGGLE_AUDIO_EVENT));
+  }
+
+  /** Indoors: credits step aside; only the sound toggle remains (and M). */
+  setInterior(inside: boolean): void {
+    this.interior = inside;
+    this.root.classList.toggle('interior', inside);
+    if (inside) this.panel.classList.remove('open');
   }
 
   show(): void {
