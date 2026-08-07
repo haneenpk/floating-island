@@ -10,18 +10,23 @@ export const settings = {
     initialPosition: { x: 31, y: 1, z: 57 },
     initialTarget: { x: 2.5, y: 8, z: 0 },
   },
+  // Golden hour, and only on the sun's side: honey where the sun sits,
+  // cool dusk opposite it, deep dusty blue overhead.
   atmosphere: {
-    zenithColor: 0x3a6fbd,
+    zenithColor: 0x3c6bb4,
     skyColor: 0x8fb8d8,
-    horizonColor: 0xf3e2c0,
-    groundColor: 0xa8b8d0,
-    fogColor: 0xc3cfdf,
-    fogNear: 52,
-    fogFar: 300,
+    horizonWarmColor: 0xf2bd83,
+    horizonCoolColor: 0xa7aecf,
+    groundColor: 0xc2b8a6,
+    // one fog colour has to serve both sides of the sky: keep it a warm
+    // neutral so distance reads hazy, not grey
+    fogColor: 0xd8cfc0,
+    fogNear: 70,
+    fogFar: 340,
   },
   environment: {
-    hdri: '/assets/hdri/sunflowers_puresky_2k.hdr',
-    intensity: 0.4,
+    hdri: '/assets/hdri/evening_road_01_puresky_2k.hdr',
+    intensity: 0.45,
   },
   postfx: {
     bloom: {
@@ -35,20 +40,21 @@ export const settings = {
       decay: 0.94,
       weight: 0.06,
       threshold: 0.8,
-      color: 0xffe8c4,
+      color: 0xffd9a0,
     },
   },
   lighting: {
+    // low warm sun: long shadows, gilded edges
     sun: {
-      color: 0xffd9a8,
-      intensity: 3.9,
-      position: { x: -56, y: 34, z: 26 },
+      color: 0xffbe78,
+      intensity: 3.8,
+      position: { x: -56, y: 23, z: 26 },
       shadowFrustum: 46,
     },
     sky: {
-      skyColor: 0x9db9e8,
-      groundColor: 0x4f5c4a,
-      intensity: 0.22,
+      skyColor: 0xc0a8c0,
+      groundColor: 0x5c4f3e,
+      intensity: 0.26,
     },
   },
 } as const;

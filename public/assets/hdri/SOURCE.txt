@@ -1,0 +1,3 @@
+HDRIs from Poly Haven (https://polyhaven.com) - CC0
+sunflowers_puresky_2k.hdr   - https://polyhaven.com/a/sunflowers_puresky (previous daytime sky)
+evening_road_01_puresky_2k.hdr - https://polyhaven.com/a/evening_road_01_puresky (golden hour)

@@ -10,6 +10,7 @@ import { initInteriorMaterials } from './scene/interior/interiorMaterials';
 import { composeHeroIsland } from './scene/composition/HeroIslandComposition';
 import { CloudField } from './scene/environment/CloudField';
 import { CloudSea } from './scene/environment/CloudSea';
+import { DistantIslets } from './scene/environment/DistantIslets';
 import { applyHdriEnvironment } from './scene/environment/EnvironmentLighting';
 import { SkyDome } from './scene/environment/SkyDome';
 import { Butterfly } from './scene/fauna/Butterfly';
@@ -72,6 +73,9 @@ const DEV_ROOM_VISIBLE_OUTSIDE = false;
 
 async function bootstrap(): Promise<void> {
   engine.sceneManager.add(new SkyDome(), new Lighting(), new CloudSea());
+  const islets = new DistantIslets();
+  engine.sceneManager.add(islets);
+  engine.sceneManager.register(islets);
   engine.start();
 
   await Promise.all([applyHdriEnvironment(engine), initIslandMaterials(engine.assets)]);
@@ -186,10 +190,19 @@ async function bootstrap(): Promise<void> {
   const panelContent = getPanelContent();
   for (const item of room.interactables) {
     const content = panelContent[item.id];
-    interaction.register(item.object, 'interior', item.label, () => {
-      if (content) storyPanel.show(content);
-      else interaction.announce(`${item.label} — coming soon`);
-    });
+    interaction.register(
+      item.object,
+      'interior',
+      item.label,
+      () => {
+        if (content) storyPanel.show(content);
+        else interaction.announce(`${item.label} — coming soon`);
+      },
+      item.object,
+      false,
+      // within arm's reach only — walk up to an object to read it
+      2.1,
+    );
   }
   interaction.setGroupEnabled('interior', false);
 
@@ -221,17 +234,6 @@ async function bootstrap(): Promise<void> {
     );
     engine.sceneManager.register(portal);
 
-    // dev-only scripted camera control (room-local coords) for testing
-    const devWindow = window as unknown as Record<string, unknown>;
-    devWindow['__devLook'] = (
-      x: number, y: number, z: number,
-      tx: number, ty: number, tz: number,
-      walk = false,
-    ) => {
-      const p = room.localToWorld(new Vector3(x, y, z));
-      const t = room.localToWorld(new Vector3(tx, ty, tz));
-      experience.enterInterior(p, t, walk ? room.getWalkConstraint() : undefined);
-    };
     // the same world-swap the portal performs, applied immediately
     const devEnterInside = (): void => {
       composition.house.visible = false;
@@ -249,12 +251,17 @@ async function bootstrap(): Promise<void> {
       engine.postSuspended = true;
       nav.setInterior(true);
     };
-    devWindow['__devInside'] = devEnterInside;
-    devWindow['__devPanel'] = (id: string) => {
-      const content = panelContent[id];
-      if (content) storyPanel.show(content);
-    };
-    devWindow['__devReady'] = true;
+    if (import.meta.env.DEV) {
+      const { installDevHooks } = await import('./utils/devHooks');
+      installDevHooks({
+        engine,
+        experience,
+        room,
+        storyPanel,
+        panelContent,
+        enterInside: devEnterInside,
+      });
+    }
 
     if (DEV_START_INSIDE) {
       devEnterInside();
