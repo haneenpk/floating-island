@@ -25,6 +25,8 @@ interface Interactable {
   pulse: number;
   /** breathes gently even when not hovered — the "you can click me" beacon */
   idlePulse: boolean;
+  /** how close (world units) the camera must be to focus it */
+  range: number;
 }
 
 const HIGHLIGHT_COLOR = new Color(0xffc27a);
@@ -75,6 +77,7 @@ export class InteractionManager implements Updatable {
     onActivate: () => void,
     highlightRoot: Object3D = root,
     idlePulse = false,
+    range = Infinity,
   ): void {
     const highlights: HighlightEntry[] = [];
     highlightRoot.traverse((child) => {
@@ -94,7 +97,7 @@ export class InteractionManager implements Updatable {
       });
     });
 
-    this.items.push({ root, label, onActivate, group, highlights, pulse: 0, idlePulse });
+    this.items.push({ root, label, onActivate, group, highlights, pulse: 0, idlePulse, range });
   }
 
   setGroupEnabled(group: string, enabled: boolean): void {
@@ -121,7 +124,8 @@ export class InteractionManager implements Updatable {
       let hit: Interactable | null = null;
       for (const item of this.items) {
         if (!this.enabledGroups.has(item.group)) continue;
-        if (this.raycaster.intersectObject(item.root, true).length > 0) {
+        const intersections = this.raycaster.intersectObject(item.root, true);
+        if (intersections.length > 0 && intersections[0]!.distance <= item.range) {
           hit = item;
           break;
         }

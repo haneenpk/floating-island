@@ -3,10 +3,11 @@ import { TOGGLE_AUDIO_EVENT } from '../audio/AudioSystem';
 const WORDMARK = 'Aetheria';
 
 const CREDITS = [
-  'environment scans — poly haven (cc0)',
-  'fantasy house — quaternius (cc0)',
+  'environment scans & skies — poly haven (cc0)',
+  'house & interior props — quaternius (cc0)',
   'parrot — mirada, ro.me (cc-by)',
   'sound — mixkit',
+  'type — cinzel by natanael gama (ofl)',
 ];
 
 export class SiteNav {

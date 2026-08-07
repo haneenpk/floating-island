@@ -9,6 +9,11 @@ export function createWornGround(radius = 1.5): Mesh {
   const material = new MeshBasicMaterial({
     map: getWearTexture(),
     blending: MultiplyBlending,
+    // three.js only wires up the multiply blend func on the premultiplied
+    // path; without this the blend silently falls back and the patch paints
+    // a pale disc instead of darkening the grass. The texture is opaque, so
+    // premultiplied and straight alpha are identical here.
+    premultipliedAlpha: true,
     transparent: true,
     depthWrite: false,
     polygonOffset: true,
