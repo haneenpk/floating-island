@@ -7,6 +7,7 @@ import {
   MeshStandardMaterial,
   Object3D,
   PointLight,
+  Raycaster,
   Vector3,
   type BufferGeometry,
 } from 'three';
@@ -34,7 +35,7 @@ const TREE_RADIAL = 0.3;
 export class GardenDressing extends Group implements Updatable {
   private readonly swings: { pivot: Group; phase: number; speed: number }[] = [];
 
-  constructor(surface: IslandSurface) {
+  constructor(surface: IslandSurface, heroTree: Object3D | null = null) {
     super();
     this.name = 'garden-dressing';
 
@@ -118,10 +119,69 @@ export class GardenDressing extends Group implements Updatable {
       });
     };
 
-    // two lanterns swing from the great tree's canopy
+    // Lanterns hang from the great tree — from real branches, found by
+    // raycasting up through the canopy. The tree's own placement is decided
+    // by the surface placer and its canopy is lopsided, so any fixed height
+    // leaves a rope tied to thin air.
     const treeGround = surface.getHeightAt(tree.x, tree.z);
-    hangLantern(tree.x + 2.1, tree.z + 1.1, treeGround + 7.6, 1.9, 1.15);
-    hangLantern(tree.x - 1.6, tree.z + 2.3, treeGround + 6.7, 1.4, 1.0);
+    const downward = new Raycaster();
+    downward.far = 40;
+    /**
+     * A spot worth hanging a lantern from: canopy directly overhead so the
+     * rope reads as tied, and open air beneath it so the lantern dangles
+     * free instead of being pinned against a limb.
+     */
+    const canopyAnchor = (x: number, z: number): number | null => {
+      if (!heroTree) return null;
+      heroTree.updateMatrixWorld(true);
+      downward.set(new Vector3(x, treeGround + 24, z), new Vector3(0, -1, 0));
+      const hits = downward.intersectObject(heroTree, true);
+      const top = hits[0];
+      if (!top || top.point.y < treeGround + 4.5) return null;
+
+      const below = hits.find((hit) => hit.point.y < top.point.y - 0.2);
+      const clearance = below ? top.point.y - below.point.y : Infinity;
+      return clearance >= 2.4 ? top.point.y : null;
+    };
+
+    // Sweep the canopy's outer reaches first: a lantern out there hangs
+    // clear of the branches and reads against the sky, where one tucked
+    // beside the trunk disappears into the foliage.
+    const spots: { x: number; z: number; y: number }[] = [];
+    for (const radius of [5.4, 4.6, 3.8]) {
+      for (let step = 0; step < 8; step++) {
+        const angle = (step / 8) * Math.PI * 2 + 0.4;
+        const x = tree.x + Math.cos(angle) * radius;
+        const z = tree.z + Math.sin(angle) * radius;
+        const anchor = canopyAnchor(x, z);
+        if (anchor !== null) spots.push({ x, z, y: anchor });
+      }
+    }
+    // the lowest boughs hang nearest eye level, where a lantern actually
+    // reads; take one, then its furthest companion so they are not paired up
+    spots.sort((a, b) => a.y - b.y);
+    const chosen = spots.slice(0, 1);
+    const first = spots[0];
+    if (first) {
+      let furthest: { x: number; z: number; y: number } | null = null;
+      let bestDistance = 0;
+      for (const spot of spots.slice(1, 8)) {
+        const distance = Math.hypot(spot.x - first.x, spot.z - first.z);
+        if (distance > bestDistance) {
+          bestDistance = distance;
+          furthest = spot;
+        }
+      }
+      if (furthest) chosen.push(furthest);
+    }
+    chosen.forEach((spot, index) => {
+      // the rope starts just inside the canopy so the knot reads as tied
+      hangLantern(spot.x, spot.z, spot.y - 0.12, random.range(1.3, 2.0), index === 0 ? 1.15 : 1.0);
+    });
+    if (chosen.length === 0) {
+      // nothing overhead anywhere (the tree is culled on the lowest tier)
+      hangLantern(tree.x + 2.1, tree.z + 1.1, treeGround + 7.2, 1.6, 1.1);
+    }
 
     // ---- lamp post beside the path, out past the doorstep ----
     const postSpot = {

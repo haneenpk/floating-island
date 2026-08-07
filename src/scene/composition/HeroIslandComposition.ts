@@ -405,7 +405,8 @@ export async function composeHeroIsland(
   }
 
   // the lived-in garden layer: lanterns, lamp post, fences, stepping stones
-  const garden = new GardenDressing(island.surface);
+  // (the tree comes along so its lanterns can hang from real branches)
+  const garden = new GardenDressing(island.surface, heroTree);
   dressing.add(garden);
   updatables.push(garden);
 
