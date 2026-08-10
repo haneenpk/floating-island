@@ -125,12 +125,11 @@ export class DistantIslets extends Group implements Updatable {
       fog: true,
     });
 
-    // Near enough to read as islands, far enough to stay scenery. Nothing
-    // sits far below the hero island any more: from the journey camera a
-    // low islet only clips the bottom of frame as a dark smudge.
+    // Two sisters, both beyond the hero island so they read as depth behind
+    // it. Anything on the camera's side of the island — especially below it
+    // — only crowds the frame or clips its bottom edge.
     const spots: { x: number; y: number; z: number; scale: number }[] = [
       { x: -70, y: 4, z: -38, scale: 7 },
-      { x: 64, y: -8, z: 50, scale: 6 },
       { x: 26, y: 11, z: -86, scale: 9 },
     ];
 
