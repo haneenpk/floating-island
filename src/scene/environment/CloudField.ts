@@ -33,14 +33,16 @@ export class CloudField extends Group implements Updatable {
     this.name = 'cloud-field';
 
     const random = new SeededRandom(seed);
-    const opacities = [0.78, 0.86, 0.93, 1];
 
     for (let i = 0; i < count; i++) {
       const material = new SpriteMaterial({
         map: texture,
         transparent: true,
         depthWrite: false,
-        opacity: opacities[random.int(0, opacities.length - 1)]!,
+        // Opaque bodies. The texture's own alpha keeps the edges soft, but
+        // a material opacity below 1 makes the whole cloud see-through, so
+        // any cloud behind it shows straight through the middle.
+        opacity: 1,
         fog: true,
       });
 

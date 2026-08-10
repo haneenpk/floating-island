@@ -73,6 +73,7 @@ export class ExperienceCamera {
   private phase: Phase = 'hold';
   private phaseTime = 0;
   private overlayCued = false;
+  private enterQueued = false;
   private onOverlayCue: (() => void) | null = null;
 
   private rig: CameraRig | null = null;
@@ -156,10 +157,15 @@ export class ExperienceCamera {
     this.onOverlayCue = onOverlayCue;
   }
 
-  /** The Enter interaction: one continuous fly-in toward the island. */
+  /**
+   * The Enter interaction: one continuous fly-in toward the island. The
+   * title appears a beat before the descent finishes, so a quick visitor
+   * can press Enter mid-intro — remember it and leave as soon as the
+   * descent lands, rather than dropping the click and stranding them.
+   */
   enter(): void {
-    if (this.phase !== 'idle') return;
-    this.setPhase('flyin');
+    if (this.phase === 'idle') this.setPhase('flyin');
+    else if (this.phase === 'intro') this.enterQueued = true;
   }
 
   /** Glide from the current pose to an arbitrary pose (door approaches…). */
@@ -230,7 +236,7 @@ export class ExperienceCamera {
           this.overlayCued = true;
           this.onOverlayCue?.();
         }
-        if (t >= 1) this.setPhase('idle');
+        if (t >= 1) this.setPhase(this.enterQueued ? 'flyin' : 'idle');
         break;
       }
 
