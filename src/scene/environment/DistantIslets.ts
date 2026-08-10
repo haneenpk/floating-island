@@ -175,8 +175,11 @@ export class DistantIslets extends Group implements Updatable {
           const tree = assets.cloneModel(TREE_KEY);
           const bounds = new Box3().setFromObject(tree);
           const naturalHeight = Math.max(bounds.max.y - bounds.min.y, 0.001);
-          // scale in the islet's local space, which is itself scaled up
-          const local = random.range(1.7, 2.6) / (spot.scale * naturalHeight);
+          // Size the tree against its own island, the way the hero tree
+          // stands to ours. A fixed world height turns into a speck on a
+          // turf nine units across.
+          const worldHeight = spot.scale * random.range(0.6, 0.85);
+          const local = worldHeight / (spot.scale * naturalHeight);
           tree.scale.setScalar(local);
 
           const offset = random.range(0.1, 0.5);
