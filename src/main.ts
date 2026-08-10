@@ -220,6 +220,8 @@ async function bootstrap(): Promise<void> {
       ]);
 
     const nav = new SiteNav();
+    // set once the landing overlay exists; indoors the scroll hint is moot
+    let retireScrollHint: (() => void) | null = null;
     const portal = new CottagePortal(
       heroIsland,
       composition.house,
@@ -233,6 +235,7 @@ async function bootstrap(): Promise<void> {
       (inside) => {
         engine.postSuspended = inside;
         nav.setInterior(inside);
+        if (inside) retireScrollHint?.();
       },
     );
     engine.sceneManager.register(portal);
@@ -277,9 +280,14 @@ async function bootstrap(): Promise<void> {
         experience.enter();
         void audio.begin(heroIsland);
       });
+      retireScrollHint = () => overlay.hideHint();
+      // the cottage only invites you in once the journey has begun; during
+      // the title and fly-in the prompt would be an interruption
+      interaction.setGroupEnabled('exterior', false);
       experience.onJourneyStart = () => {
         nav.show();
         overlay.showHint();
+        interaction.setGroupEnabled('exterior', true);
       };
       experience.beginIntro(() => overlay.show());
     }
