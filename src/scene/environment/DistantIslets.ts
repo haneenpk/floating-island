@@ -125,16 +125,18 @@ export class DistantIslets extends Group implements Updatable {
       fog: true,
     });
 
-    // near enough to read as islands, far enough to stay scenery
+    // Near enough to read as islands, far enough to stay scenery. Nothing
+    // sits far below the hero island any more: from the journey camera a
+    // low islet only clips the bottom of frame as a dark smudge.
     const spots: { x: number; y: number; z: number; scale: number }[] = [
       { x: -70, y: 4, z: -38, scale: 7 },
-      { x: 64, y: -14, z: 50, scale: 6 },
+      { x: 64, y: -8, z: 50, scale: 6 },
       { x: 26, y: 11, z: -86, scale: 9 },
-      { x: -54, y: -20, z: 66, scale: 5 },
     ];
 
-    for (const spot of spots) {
+    spots.forEach((spot, index) => {
       const islet = new Group();
+      islet.name = `islet-${index}`;
 
       // craggy inverted cone, chunky like the hero island's underside
       const coneGeometry = new ConeGeometry(1, 1.9, 9, 4);
@@ -204,7 +206,7 @@ export class DistantIslets extends Group implements Updatable {
         phase: random.range(0, Math.PI * 2),
         speed: random.range(0.06, 0.11),
       });
-    }
+    });
   }
 
   update(time: Time): void {
