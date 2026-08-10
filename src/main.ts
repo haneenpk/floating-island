@@ -10,7 +10,7 @@ import { initInteriorMaterials } from './scene/interior/interiorMaterials';
 import { composeHeroIsland } from './scene/composition/HeroIslandComposition';
 import { CloudField } from './scene/environment/CloudField';
 import { CloudSea } from './scene/environment/CloudSea';
-import { DistantIslets } from './scene/environment/DistantIslets';
+import { createDistantIslets } from './scene/environment/DistantIslets';
 import { applyHdriEnvironment } from './scene/environment/EnvironmentLighting';
 import { SkyDome } from './scene/environment/SkyDome';
 import { Butterfly } from './scene/fauna/Butterfly';
@@ -73,9 +73,6 @@ const DEV_ROOM_VISIBLE_OUTSIDE = false;
 
 async function bootstrap(): Promise<void> {
   engine.sceneManager.add(new SkyDome(), new Lighting(), new CloudSea());
-  const islets = new DistantIslets();
-  engine.sceneManager.add(islets);
-  engine.sceneManager.register(islets);
   engine.start();
 
   await Promise.all([applyHdriEnvironment(engine), initIslandMaterials(engine.assets)]);
@@ -115,6 +112,12 @@ async function bootstrap(): Promise<void> {
     engine.sceneManager.register(updatable);
   }
   const butterfly = await addFauna(heroIsland);
+
+  // sister islands, wearing the hero island's own scanned textures and its
+  // small tree — built after the composition so both are already loaded
+  const islets = await createDistantIslets(engine.assets);
+  engine.sceneManager.add(islets);
+  engine.sceneManager.register(islets);
 
   heroIsland.add(createPollen(getQuality().pollenCount, heroIsland.params.seed));
   engine.refreshShadows();
