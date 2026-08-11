@@ -147,7 +147,7 @@ async function bootstrap(): Promise<void> {
   const scene = engine.sceneManager.scene;
   const outdoorEnvironment = scene.environmentIntensity;
   const setIndoorLight = (inside: boolean): void => {
-    scene.environmentIntensity = inside ? outdoorEnvironment * 0.3 : outdoorEnvironment;
+    scene.environmentIntensity = inside ? outdoorEnvironment * 0.38 : outdoorEnvironment;
   };
 
   // The interior room floats in the sky, its round window aimed back at the
