@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { AudioSystem } from './audio/AudioSystem';
 import { ExperienceCamera } from './camera/ExperienceCamera';
 import { Engine } from './core/Engine';
-import { getQuality } from './core/Quality';
+import { consumeAutoEasedNotice, getQuality } from './core/Quality';
 import { InteractionManager } from './interaction/InteractionManager';
 import { createPollen } from './scene/atmosphere/Pollen';
 import { CottageRoom } from './scene/interior/CottageRoom';
@@ -38,6 +38,12 @@ const bootNote = document.querySelector<HTMLElement>('#boot .boot-note');
 function bootFail(message: string): void {
   if (bootNote) bootNote.textContent = message;
   bootFill?.parentElement?.remove();
+}
+
+// if the watchdog eased the detail down last time, say so rather than
+// letting the world quietly come back looking different
+if (bootNote && consumeAutoEasedNotice()) {
+  bootNote.textContent = 'easing the detail down for a smoother flight…';
 }
 
 function bootFinish(): void {
