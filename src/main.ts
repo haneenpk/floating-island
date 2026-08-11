@@ -141,6 +141,15 @@ async function bootstrap(): Promise<void> {
   const audio = new AudioSystem(engine.camera, engine.assets);
   engine.sceneManager.register(audio);
 
+  // The sky's environment map lights every material in the scene, including
+  // the ones under the cottage roof. Indoors it is turned down so the room
+  // is lit by its own hearth and lamps rather than by the weather.
+  const scene = engine.sceneManager.scene;
+  const outdoorEnvironment = scene.environmentIntensity;
+  const setIndoorLight = (inside: boolean): void => {
+    scene.environmentIntensity = inside ? outdoorEnvironment * 0.3 : outdoorEnvironment;
+  };
+
   // The interior room floats in the sky, its round window aimed back at the
   // living island; interactable objects inside are future navigation points.
   const interaction = new InteractionManager(engine.camera);
@@ -250,6 +259,7 @@ async function bootstrap(): Promise<void> {
       audio,
       (inside) => {
         engine.postSuspended = inside;
+        setIndoorLight(inside);
         nav.setInterior(inside);
         if (inside) retireScrollHint?.();
       },
@@ -271,6 +281,7 @@ async function bootstrap(): Promise<void> {
       document.documentElement.style.overflow = 'hidden';
       audio.setIndoor(true, room.getWindowWorld());
       engine.postSuspended = true;
+      setIndoorLight(true);
       nav.setInterior(true);
     };
     if (import.meta.env.DEV) {

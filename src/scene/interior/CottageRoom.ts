@@ -90,21 +90,24 @@ export class CottageRoom extends Group implements Updatable {
     // environment map for fill, which meant the golden-hour sky — far dimmer
     // than the midday one — quietly took the interior down with it. A pocket
     // world under its own roof should not depend on the weather outside.
-    const roomFill = new HemisphereLight(0xf3e6cf, 0x6b533a, 1.15);
+    // Enough to read the room by, and no more: lamplight, not daylight. Set
+    // any higher and the plaster and floorboards flatten out as though the
+    // sun were indoors with you, which leaves the hearth nothing to do.
+    const roomFill = new HemisphereLight(0xe3cba6, 0x4a3826, 0.5);
     roomFill.position.set(0, UPPER_Y, 0);
     this.add(roomFill);
 
     // candle sconce over the stairs and a soft lamp in the loft keep the
     // far corners from going pitch black
-    const sconceLight = new PointLight(0xffb46a, 1.5, 8, 2);
+    const sconceLight = new PointLight(0xffb46a, 1.35, 8, 2);
     sconceLight.position.set(1.5, 2.7, -ROOM_D / 2 + 0.7);
     this.add(sconceLight);
-    const loftLight = new PointLight(0xffc98a, 1.3, 9, 2);
+    const loftLight = new PointLight(0xffc98a, 1.15, 9, 2);
     loftLight.position.set(2.4, UPPER_Y + 1.7, 1.6);
     this.add(loftLight);
-    // daylight leaning in at the round window, so the loft is not lit only
-    // by the fire two floors below
-    const windowLight = new PointLight(0xdCe6f2, 0.85, 9, 2);
+    // the last of the evening leaning in at the round window, so the loft is
+    // not lit only by a fire two floors below
+    const windowLight = new PointLight(0xd7d9e4, 0.5, 8, 2);
     windowLight.position.set(0, UPPER_Y + 1.6, ROOM_D / 2 - 1.1);
     this.add(windowLight);
 
