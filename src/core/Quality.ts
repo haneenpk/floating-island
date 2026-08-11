@@ -70,6 +70,11 @@ const PROFILES: Record<QualityTier, QualityProfile> = {
 };
 
 const STORAGE_KEY = 'island:quality';
+// set when the visitor picks a tier themselves, so the watchdog stops
+// second-guessing them
+const MANUAL_KEY = 'island:quality-manual';
+// left behind by an automatic downgrade, so the next load can say so
+const EASED_KEY = 'island:quality-eased';
 const TIER_ORDER: QualityTier[] = ['medium', 'low'];
 
 function isTier(value: unknown): value is QualityTier {
@@ -91,15 +96,35 @@ function detectTier(): QualityTier {
 
   const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
 
+  // Known-modest families. This is a first guess only — renderer strings are
+  // inconsistent and often masked, so the frame-rate watchdog is what really
+  // decides. Guessing high costs a few seconds and a reload; guessing low
+  // would strand a capable machine on the plainer world.
   const weakGpu =
-    /GT ?7[0-4]0|GT ?6\d0|GT ?5\d0|GTX ?[4-6]\d0\b|Radeon ?(HD|R5)|HD Graphics|UHD Graphics 6\d\d|Mali|Adreno|SwiftShader|llvmpipe/i;
+    /GT ?7[0-4]0|GT ?6\d0|GT ?5\d0|GTX ?[4-6]\d0\b|GeForce MX|Radeon ?(HD|R5|R6)|HD Graphics|UHD Graphics|Vega [368]\b|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Microsoft Basic Render/i;
 
   if (weakGpu.test(gpu) || deviceMemory <= 4) return 'low';
   return 'medium';
 }
 
 export function isQualityOverridden(): boolean {
-  return isTier(new URLSearchParams(window.location.search).get('quality'));
+  if (isTier(new URLSearchParams(window.location.search).get('quality'))) return true;
+  return window.localStorage.getItem(MANUAL_KEY) === '1';
+}
+
+/**
+ * Remember a tier the visitor chose and reload into it — texture sizes,
+ * model LODs and renderer settings are all decided at startup, so there is
+ * no honest way to swap them mid-flight.
+ */
+export function chooseQualityTier(tier: QualityTier): void {
+  window.localStorage.setItem(STORAGE_KEY, tier);
+  window.localStorage.setItem(MANUAL_KEY, '1');
+
+  // a ?quality= in the address bar would outrank the stored choice
+  const url = new URL(window.location.href);
+  url.searchParams.delete('quality');
+  window.location.replace(url.toString());
 }
 
 function resolveTier(): QualityTier {
@@ -127,6 +152,15 @@ export function downgradeQuality(): boolean {
   if (!next) return false;
 
   window.localStorage.setItem(STORAGE_KEY, next);
+  // so the next load can explain itself instead of just being different
+  window.localStorage.setItem(EASED_KEY, '1');
   console.info(`[quality] sustained low fps - downgrading to "${next}" and reloading`);
+  return true;
+}
+
+/** True once, on the load right after the watchdog eased the detail down. */
+export function consumeAutoEasedNotice(): boolean {
+  if (window.localStorage.getItem(EASED_KEY) !== '1') return false;
+  window.localStorage.removeItem(EASED_KEY);
   return true;
 }

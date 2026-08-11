@@ -1,12 +1,14 @@
 {
   "name": "island",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:host": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "preview:host": "vite preview --host",
     "assets:lods": "node scripts/generate-lods.mjs"
   },
   "devDependencies": {

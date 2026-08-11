@@ -1,18 +1,27 @@
 import {
+  Box3,
   CanvasTexture,
   ClampToEdgeWrapping,
   ConeGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshStandardMaterial,
   PlaneGeometry,
+  RepeatWrapping,
   SphereGeometry,
-  CylinderGeometry,
-  DoubleSide,
+  Vector2,
+  type Texture,
 } from 'three';
+import type { AssetManager } from '../../assets/AssetManager';
 import type { Time } from '../../core/Time';
 import { SeededRandom } from '../../procgen/SeededRandom';
 import type { Updatable } from '../Updatable';
+
+// The island's own small tree, at its cheapest LOD — these are scenery
+// hundreds of units out, so the low-poly variant is right on every tier.
+const TREE_KEY = 'islet-tree';
+const TREE_URL = '/assets/models/island_tree_01/island_tree_01_lod2.gltf';
 
 /** Soft white streak for a faraway waterfall — feathered on every edge. */
 function makeStreakTexture(): CanvasTexture {
@@ -36,35 +45,77 @@ function makeStreakTexture(): CanvasTexture {
   ctx.fillStyle = sides;
   ctx.fillRect(0, 0, 32, 64);
   ctx.globalCompositeOperation = 'source-over';
+
   const texture = new CanvasTexture(canvas);
   texture.wrapS = ClampToEdgeWrapping;
   texture.wrapT = ClampToEdgeWrapping;
   return texture;
 }
 
+function textureUrl(set: string, map: string): string {
+  return `/assets/textures/${set}/textures/${set}_${map}_2k.jpg`;
+}
+
 /**
- * Faraway sister islands adrift in the haze — a rock cone, a grass cap,
- * a tiny tree or two, and a thread of falling water. Low-poly silhouettes
- * that the warm fog softens into the distance.
+ * A tiling copy of one of the island's own Poly Haven sets. The originals are
+ * already cached by the terrain, so this costs no extra download — cloning
+ * only lets the islets set their own repeat without disturbing the terrain.
+ */
+async function tiledSet(
+  assets: AssetManager,
+  set: string,
+  repeat: Vector2,
+): Promise<{ map: Texture; normalMap: Texture; roughnessMap: Texture }> {
+  const [diffuse, normal, arm] = await Promise.all([
+    assets.loadTexture(`${set}-diff`, textureUrl(set, 'diff'), { colorSpace: 'srgb' }),
+    assets.loadTexture(`${set}-nor`, textureUrl(set, 'nor_gl'), { colorSpace: 'linear' }),
+    assets.loadTexture(`${set}-arm`, textureUrl(set, 'arm'), { colorSpace: 'linear' }),
+  ]);
+  const copy = (texture: Texture): Texture => {
+    const clone = texture.clone();
+    clone.wrapS = RepeatWrapping;
+    clone.wrapT = RepeatWrapping;
+    clone.repeat.copy(repeat);
+    clone.needsUpdate = true;
+    return clone;
+  };
+  return { map: copy(diffuse), normalMap: copy(normal), roughnessMap: copy(arm) };
+}
+
+export async function createDistantIslets(assets: AssetManager): Promise<DistantIslets> {
+  const [turf, stone] = await Promise.all([
+    tiledSet(assets, 'concrete_moss', new Vector2(3, 3)),
+    tiledSet(assets, 'aerial_rocks_01', new Vector2(2, 2)),
+    assets.loadModel(TREE_KEY, TREE_URL).catch(() => undefined),
+  ]);
+
+  const grass = new MeshStandardMaterial({ ...turf, color: 0x9fb277, roughness: 1, fog: true });
+  const rock = new MeshStandardMaterial({
+    ...stone,
+    color: 0xa08f7a,
+    roughness: 1,
+    fog: true,
+    flatShading: true,
+  });
+  return new DistantIslets(grass, rock, assets);
+}
+
+/**
+ * Faraway sister islands adrift in the haze — a rock cone, a grassy crown,
+ * a tree or two, and a thread of falling water. They wear the same scanned
+ * textures as the hero island so the family resemblance holds at distance.
  */
 export class DistantIslets extends Group implements Updatable {
   private readonly bobbers: { islet: Group; baseY: number; phase: number; speed: number }[] = [];
 
-  constructor() {
+  constructor(grass: MeshStandardMaterial, rock: MeshStandardMaterial, assets: AssetManager) {
     super();
     this.name = 'distant-islets';
+    // the small tree is loaded by the hero composition; skip the greenery
+    // rather than throw if the islets are built before it
+    const hasTree = assets.getModel(TREE_KEY) !== undefined;
 
-    const random = new SeededRandom(0x151e7 & 0xffff);
-    // deeper tones than they look: warm haze lightens them a lot at range
-    const rock = new MeshStandardMaterial({
-      color: 0x53412e,
-      roughness: 1,
-      fog: true,
-      flatShading: true,
-    });
-    const grass = new MeshStandardMaterial({ color: 0x476027, roughness: 1, fog: true });
-    const canopy = new MeshStandardMaterial({ color: 0x35501f, roughness: 1, fog: true });
-    const trunk = new MeshStandardMaterial({ color: 0x6d5136, roughness: 1, fog: true });
+    const random = new SeededRandom(0x151e7);
     const streak = new MeshStandardMaterial({
       map: makeStreakTexture(),
       transparent: true,
@@ -74,16 +125,17 @@ export class DistantIslets extends Group implements Updatable {
       fog: true,
     });
 
-    // near enough to read as islands, far enough to stay scenery
+    // Two sisters, both beyond the hero island so they read as depth behind
+    // it. Anything on the camera's side of the island — especially below it
+    // — only crowds the frame or clips its bottom edge.
     const spots: { x: number; y: number; z: number; scale: number }[] = [
       { x: -70, y: 4, z: -38, scale: 7 },
-      { x: 64, y: -14, z: 50, scale: 6 },
       { x: 26, y: 11, z: -86, scale: 9 },
-      { x: -54, y: -20, z: 66, scale: 5 },
     ];
 
-    for (const spot of spots) {
+    spots.forEach((spot, index) => {
       const islet = new Group();
+      islet.name = `islet-${index}`;
 
       // craggy inverted cone, chunky like the hero island's underside
       const coneGeometry = new ConeGeometry(1, 1.9, 9, 4);
@@ -112,29 +164,31 @@ export class DistantIslets extends Group implements Updatable {
       islet.add(turf);
 
       // height of the turf dome at a given distance from its centre, so
-      // trees and boulders stand on it instead of sinking through
+      // trees stand on it instead of sinking through
       const turfY = (radius: number): number =>
         0.22 * Math.sqrt(Math.max(1 - radius * radius, 0));
 
-      const treeCount = 1 + random.int(0, 1);
-      for (let i = 0; i < treeCount; i++) {
-        const tx = random.range(-0.45, 0.45);
-        const tz = random.range(-0.4, 0.4);
-        const ground = turfY(Math.hypot(tx, tz)) - 0.02;
-        const height = random.range(0.28, 0.45);
-        const stem = new Mesh(new CylinderGeometry(0.018, 0.03, height, 5), trunk);
-        stem.position.set(tx, ground + height / 2, tz);
-        islet.add(stem);
-        // a small cluster of puffs reads as a canopy, not a lollipop
-        for (let p = 0; p < 3; p++) {
-          const puff = new Mesh(new SphereGeometry(random.range(0.09, 0.15), 6, 4), canopy);
-          puff.position.set(
-            tx + random.range(-0.1, 0.1),
-            ground + height + random.range(-0.02, 0.09),
-            tz + random.range(-0.1, 0.1),
-          );
-          puff.scale.y = 0.75;
-          islet.add(puff);
+      // the island's own small tree, shrunk to islet scale
+      if (hasTree) {
+        const count = 1 + random.int(0, 1);
+        for (let i = 0; i < count; i++) {
+          const tree = assets.cloneModel(TREE_KEY);
+          const bounds = new Box3().setFromObject(tree);
+          const naturalHeight = Math.max(bounds.max.y - bounds.min.y, 0.001);
+          // Size the tree against its own island, the way the hero tree
+          // stands to ours. A fixed world height turns into a speck on a
+          // turf nine units across.
+          const worldHeight = spot.scale * random.range(0.6, 0.85);
+          const local = worldHeight / (spot.scale * naturalHeight);
+          tree.scale.setScalar(local);
+
+          const offset = random.range(0.1, 0.5);
+          const angle = random.range(0, Math.PI * 2);
+          const tx = Math.cos(angle) * offset;
+          const tz = Math.sin(angle) * offset;
+          tree.position.set(tx, turfY(Math.hypot(tx, tz)) - bounds.min.y * local - 0.01, tz);
+          tree.rotation.y = random.range(0, Math.PI * 2);
+          islet.add(tree);
         }
       }
 
@@ -154,12 +208,13 @@ export class DistantIslets extends Group implements Updatable {
         phase: random.range(0, Math.PI * 2),
         speed: random.range(0.06, 0.11),
       });
-    }
+    });
   }
 
   update(time: Time): void {
     for (const bobber of this.bobbers) {
-      bobber.islet.position.y = bobber.baseY + Math.sin(time.elapsed * bobber.speed + bobber.phase) * 1.4;
+      bobber.islet.position.y =
+        bobber.baseY + Math.sin(time.elapsed * bobber.speed + bobber.phase) * 1.4;
     }
   }
 }

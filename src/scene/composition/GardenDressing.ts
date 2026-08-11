@@ -147,36 +147,47 @@ export class GardenDressing extends Group implements Updatable {
     // Sweep the canopy's outer reaches first: a lantern out there hangs
     // clear of the branches and reads against the sky, where one tucked
     // beside the trunk disappears into the foliage.
-    const spots: { x: number; z: number; y: number }[] = [];
-    for (const radius of [5.4, 4.6, 3.8]) {
-      for (let step = 0; step < 8; step++) {
-        const angle = (step / 8) * Math.PI * 2 + 0.4;
-        const x = tree.x + Math.cos(angle) * radius;
-        const z = tree.z + Math.sin(angle) * radius;
+    const spots: { x: number; z: number; y: number; front: number }[] = [];
+    for (const radius of [6.6, 5.8, 5.0, 4.2]) {
+      for (let step = 0; step < 12; step++) {
+        const angle = (step / 12) * Math.PI * 2 + 0.4;
+        const offsetX = Math.cos(angle) * radius;
+        const offsetZ = Math.sin(angle) * radius;
+        const x = tree.x + offsetX;
+        const z = tree.z + offsetZ;
         const anchor = canopyAnchor(x, z);
-        if (anchor !== null) spots.push({ x, z, y: anchor });
+        if (anchor === null) continue;
+        // the journey camera meets the island from the cottage's face, so
+        // that is the side worth decorating
+        const front = (offsetX * forward.x + offsetZ * forward.z) / radius;
+        spots.push({ x, z, y: anchor, front });
       }
     }
-    // the lowest boughs hang nearest eye level, where a lantern actually
-    // reads; take one, then its furthest companion so they are not paired up
-    spots.sort((a, b) => a.y - b.y);
-    const chosen = spots.slice(0, 1);
-    const first = spots[0];
-    if (first) {
-      let furthest: { x: number; z: number; y: number } | null = null;
-      let bestDistance = 0;
-      for (const spot of spots.slice(1, 8)) {
-        const distance = Math.hypot(spot.x - first.x, spot.z - first.z);
-        if (distance > bestDistance) {
-          bestDistance = distance;
-          furthest = spot;
-        }
-      }
-      if (furthest) chosen.push(furthest);
+    // Hang the lowest boughs first — a lantern at eye level reads where one
+    // in the crown does not — but work the camera-facing side before the
+    // back, and keep them apart so they ring the canopy instead of pairing.
+    const byHeight = (a: (typeof spots)[number], b: (typeof spots)[number]): number => a.y - b.y;
+    const ordered = [
+      ...spots.filter((spot) => spot.front >= 0).sort(byHeight),
+      ...spots.filter((spot) => spot.front < 0).sort(byHeight),
+    ];
+    const chosen: typeof spots = [];
+    for (const spot of ordered) {
+      if (chosen.length >= 4) break;
+      const apart = chosen.every(
+        (picked) => Math.hypot(picked.x - spot.x, picked.z - spot.z) >= 2.4,
+      );
+      if (apart) chosen.push(spot);
     }
     chosen.forEach((spot, index) => {
       // the rope starts just inside the canopy so the knot reads as tied
-      hangLantern(spot.x, spot.z, spot.y - 0.12, random.range(1.3, 2.0), index === 0 ? 1.15 : 1.0);
+      hangLantern(
+        spot.x,
+        spot.z,
+        spot.y - 0.12,
+        random.range(1.2, 2.1),
+        index === 0 ? 1.15 : random.range(0.9, 1.05),
+      );
     });
     if (chosen.length === 0) {
       // nothing overhead anywhere (the tree is culled on the lowest tier)

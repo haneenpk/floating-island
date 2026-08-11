@@ -41,13 +41,12 @@ export class LandingOverlay {
   /** Called when the fly-in has landed and scrolling becomes possible. */
   showHint(): void {
     this.hint.classList.add('visible');
-    window.addEventListener(
-      'scroll',
-      () => {
-        this.hint.classList.remove('visible');
-        window.setTimeout(() => this.hint.remove(), 1600);
-      },
-      { once: true, passive: true },
-    );
+    window.addEventListener('scroll', () => this.hideHint(), { once: true, passive: true });
+  }
+
+  /** Retire the hint — scrolled, or gone somewhere scrolling means nothing. */
+  hideHint(): void {
+    this.hint.classList.remove('visible');
+    window.setTimeout(() => this.hint.remove(), 1600);
   }
 }

@@ -4,6 +4,7 @@ import {
   MeshStandardMaterial,
   Raycaster,
   Vector2,
+  Vector3,
   type Object3D,
   type PerspectiveCamera,
 } from 'three';
@@ -31,6 +32,7 @@ interface Interactable {
 
 const HIGHLIGHT_COLOR = new Color(0xffc27a);
 const scratchColor = new Color();
+const scratchPosition = new Vector3();
 
 /**
  * Pointer -> world interaction: raycast hover with a soft emissive pulse and
@@ -45,6 +47,9 @@ export class InteractionManager implements Updatable {
   private readonly items: Interactable[] = [];
   private readonly enabledGroups = new Set<string>(['exterior']);
   private hovered: Interactable | null = null;
+  /** what E would act on: whatever is hovered, else a beacon in view */
+  private beacon: Interactable | null = null;
+  private prompted: Interactable | null = null;
   private pointerDirty = false;
 
   constructor(private readonly camera: PerspectiveCamera) {
@@ -66,7 +71,7 @@ export class InteractionManager implements Updatable {
     window.addEventListener('keydown', (event) => {
       if (event.repeat || event.key.toLowerCase() !== 'e') return;
       if (document.body.classList.contains('overlay-open')) return;
-      if (this.hovered) this.hovered.onActivate();
+      this.beacon?.onActivate();
     });
   }
 
@@ -133,6 +138,12 @@ export class InteractionManager implements Updatable {
       this.setHovered(hit);
     }
 
+    // A beacon speaks for itself: once it is on screen and within reach the
+    // prompt shows without hunting for it with the cursor, so the cottage
+    // door reads as a way in rather than scenery.
+    this.beacon = this.hovered ?? (overlayOpen ? null : this.findBeacon());
+    this.setPrompt(this.beacon);
+
     for (const item of this.items) {
       const goal = item === this.hovered ? 1 : 0;
       item.pulse += (goal - item.pulse) * (1 - Math.exp(-time.delta * 7));
@@ -158,15 +169,39 @@ export class InteractionManager implements Updatable {
   announce(text: string): void {
     this.caption.textContent = text;
     this.caption.classList.add('visible');
+    // the prompt redraws itself on the next frame it applies to
+    this.prompted = null;
     window.setTimeout(() => {
-      if (!this.hovered) this.caption.classList.remove('visible');
+      if (!this.prompted) this.caption.classList.remove('visible');
     }, 1800);
   }
 
-  private setHovered(item: Interactable | null): void {
-    if (item === this.hovered) return;
-    this.hovered = item;
-    document.body.style.cursor = item ? 'pointer' : '';
+  /** The nearest marked object that is in front of the camera and in reach. */
+  private findBeacon(): Interactable | null {
+    let best: Interactable | null = null;
+    let bestDistance = Infinity;
+
+    for (const item of this.items) {
+      if (!item.idlePulse || !this.enabledGroups.has(item.group)) continue;
+
+      item.root.getWorldPosition(scratchPosition);
+      const distance = scratchPosition.distanceTo(this.camera.position);
+      if (distance > item.range || distance >= bestDistance) continue;
+
+      // on screen, and not so near the edge that the prompt feels unmoored
+      scratchPosition.project(this.camera);
+      if (scratchPosition.z > 1) continue;
+      if (Math.abs(scratchPosition.x) > 0.8 || Math.abs(scratchPosition.y) > 0.8) continue;
+
+      best = item;
+      bestDistance = distance;
+    }
+    return best;
+  }
+
+  private setPrompt(item: Interactable | null): void {
+    if (item === this.prompted) return;
+    this.prompted = item;
     if (item) {
       this.caption.replaceChildren();
       const key = document.createElement('span');
@@ -177,5 +212,11 @@ export class InteractionManager implements Updatable {
     } else {
       this.caption.classList.remove('visible');
     }
+  }
+
+  private setHovered(item: Interactable | null): void {
+    if (item === this.hovered) return;
+    this.hovered = item;
+    document.body.style.cursor = item ? 'pointer' : '';
   }
 }

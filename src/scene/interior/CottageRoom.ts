@@ -1,5 +1,6 @@
 import {
   Group,
+  HemisphereLight,
   Mesh,
   PointLight,
   RingGeometry,
@@ -85,14 +86,30 @@ export class CottageRoom extends Group implements Updatable {
     this.add(this.hearth);
     this.fireLight = this.hearth.light;
 
+    // The room carries its own daylight. It used to borrow the sky's
+    // environment map for fill, which meant the golden-hour sky — far dimmer
+    // than the midday one — quietly took the interior down with it. A pocket
+    // world under its own roof should not depend on the weather outside.
+    // Enough to read the room by, and no more: lamplight, not daylight. Set
+    // any higher and the plaster and floorboards flatten out as though the
+    // sun were indoors with you, which leaves the hearth nothing to do.
+    const roomFill = new HemisphereLight(0xe3cba6, 0x4a3826, 0.5);
+    roomFill.position.set(0, UPPER_Y, 0);
+    this.add(roomFill);
+
     // candle sconce over the stairs and a soft lamp in the loft keep the
     // far corners from going pitch black
-    const sconceLight = new PointLight(0xffb46a, 1.2, 7, 2);
+    const sconceLight = new PointLight(0xffb46a, 1.35, 8, 2);
     sconceLight.position.set(1.5, 2.7, -ROOM_D / 2 + 0.7);
     this.add(sconceLight);
-    const loftLight = new PointLight(0xffc98a, 1.0, 8, 2);
+    const loftLight = new PointLight(0xffc98a, 1.15, 9, 2);
     loftLight.position.set(2.4, UPPER_Y + 1.7, 1.6);
     this.add(loftLight);
+    // the last of the evening leaning in at the round window, so the loft is
+    // not lit only by a fire two floors below
+    const windowLight = new PointLight(0xd7d9e4, 0.5, 8, 2);
+    windowLight.position.set(0, UPPER_Y + 1.6, ROOM_D / 2 - 1.1);
+    this.add(windowLight);
 
     // world matrix must be valid immediately: the portal samples world-space
     // poses (camera, exit door) before the first rendered frame

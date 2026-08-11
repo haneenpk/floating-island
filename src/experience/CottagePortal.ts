@@ -1,4 +1,12 @@
-import { Group, Mesh, MeshBasicMaterial, BoxGeometry, Vector3, type Object3D } from 'three';
+import {
+  BoxGeometry,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  PointLight,
+  Vector3,
+  type Object3D,
+} from 'three';
 import type { AudioSystem } from '../audio/AudioSystem';
 import type { ExperienceCamera } from '../camera/ExperienceCamera';
 import type { Time } from '../core/Time';
@@ -21,6 +29,7 @@ export class CottagePortal implements Updatable {
   private readonly doorWorld = new Vector3();
   private busy = false;
   private houseDoor: { pivot: Group; open: number; target: number } | null = null;
+  private doorGlow!: PointLight;
 
   constructor(
     private readonly island: FloatingIsland,
@@ -68,7 +77,16 @@ export class CottagePortal implements Updatable {
       () => void this.enter(),
       this.houseDoor ? this.houseDoor.pivot : hit,
       true,
+      // the prompt should greet you as the journey brings the cottage into
+      // view, not only when the cursor happens to find the door
+      70,
     );
+
+    // warmth spilling around the threshold, breathing with the same slow
+    // rhythm as the door's glow — an invitation rather than a marker
+    this.doorGlow = new PointLight(0xffb45c, 0, 4.6, 2);
+    this.doorGlow.position.copy(this.doorWorld).add(new Vector3(0, -0.2, 0));
+    island.add(this.doorGlow);
 
     const exitHit = new Mesh(
       new BoxGeometry(1.4, 2.4, 0.6),
@@ -94,6 +112,11 @@ export class CottagePortal implements Updatable {
       door.open += (door.target - door.open) * (1 - Math.exp(-time.delta * 4));
       door.pivot.rotation.y = door.open * -1.7;
     }
+
+    // lit only while the door can actually be entered
+    const inviting = this.room.visible ? 0 : 1;
+    const breath = 0.55 + Math.sin(time.elapsed * 1.6) * 0.45;
+    this.doorGlow.intensity += (inviting * (0.9 + breath * 0.7) - this.doorGlow.intensity) * 0.05;
   }
 
   private async enter(): Promise<void> {
