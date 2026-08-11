@@ -233,7 +233,10 @@ body::-webkit-scrollbar {
   transition: opacity 1.8s ease;
 }
 
-#site-nav.interior .nav-credits {
+/* indoors only the sound toggle remains: credits step aside, and switching
+   detail would reload the page and throw the visitor back outside */
+#site-nav.interior .nav-credits,
+#site-nav.interior .nav-detail {
   display: none;
 }
 

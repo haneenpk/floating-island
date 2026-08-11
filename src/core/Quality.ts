@@ -70,6 +70,9 @@ const PROFILES: Record<QualityTier, QualityProfile> = {
 };
 
 const STORAGE_KEY = 'island:quality';
+// set when the visitor picks a tier themselves, so the watchdog stops
+// second-guessing them
+const MANUAL_KEY = 'island:quality-manual';
 const TIER_ORDER: QualityTier[] = ['medium', 'low'];
 
 function isTier(value: unknown): value is QualityTier {
@@ -99,7 +102,23 @@ function detectTier(): QualityTier {
 }
 
 export function isQualityOverridden(): boolean {
-  return isTier(new URLSearchParams(window.location.search).get('quality'));
+  if (isTier(new URLSearchParams(window.location.search).get('quality'))) return true;
+  return window.localStorage.getItem(MANUAL_KEY) === '1';
+}
+
+/**
+ * Remember a tier the visitor chose and reload into it — texture sizes,
+ * model LODs and renderer settings are all decided at startup, so there is
+ * no honest way to swap them mid-flight.
+ */
+export function chooseQualityTier(tier: QualityTier): void {
+  window.localStorage.setItem(STORAGE_KEY, tier);
+  window.localStorage.setItem(MANUAL_KEY, '1');
+
+  // a ?quality= in the address bar would outrank the stored choice
+  const url = new URL(window.location.href);
+  url.searchParams.delete('quality');
+  window.location.replace(url.toString());
 }
 
 function resolveTier(): QualityTier {
