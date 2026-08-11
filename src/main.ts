@@ -22,6 +22,7 @@ import { maybeCreateWaterSystem } from './scene/water/WaterSystem';
 import { getPanelContent } from './ui/panelContent';
 import { StoryPanel } from './ui/StoryPanel';
 import { hasDebugFlag } from './utils/debug';
+import { isHandheld } from './utils/device';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#webgl');
 
@@ -47,20 +48,29 @@ function bootFinish(): void {
   }, 250);
 }
 
-let engine: Engine;
-try {
-  engine = new Engine(canvas);
-} catch (error) {
-  bootFail('this little world needs WebGL — please try another browser');
-  throw error;
-}
+// assigned by startExperience, which a handheld visitor may never reach
+let engine!: Engine;
 
-// LoadingManager totals grow as loads enqueue, so keep the bar monotonic
-let bootProgress = 0;
-engine.assets.onProgress((_url, loaded, total) => {
-  if (total > 0) bootProgress = Math.max(bootProgress, loaded / total);
-  if (bootFill) bootFill.style.width = `${Math.round(bootProgress * 96)}%`;
-});
+function startExperience(): void {
+  try {
+    engine = new Engine(canvas!);
+  } catch (error) {
+    bootFail('this little world needs WebGL — please try another browser');
+    throw error;
+  }
+
+  // LoadingManager totals grow as loads enqueue, so keep the bar monotonic
+  let bootProgress = 0;
+  engine.assets.onProgress((_url, loaded, total) => {
+    if (total > 0) bootProgress = Math.max(bootProgress, loaded / total);
+    if (bootFill) bootFill.style.width = `${Math.round(bootProgress * 96)}%`;
+  });
+
+  void bootstrap().catch((error) => {
+    console.error('Failed to bootstrap experience', error);
+    bootFail('the island failed to load — please refresh');
+  });
+}
 
 // TESTING ONLY: boot straight into the cottage interior, skipping the
 // landing overlay, intro and journey. Set back to false to restore the
@@ -339,7 +349,13 @@ async function addFauna(island: FloatingIsland): Promise<Butterfly> {
   return butterfly;
 }
 
-void bootstrap().catch((error) => {
-  console.error('Failed to bootstrap experience', error);
-  bootFail('the island failed to load — please refresh');
-});
+// A phone or tablet gets the doorway instead — no renderer, no models, no
+// hundreds of megabytes downloaded for a world it cannot steer.
+if (isHandheld() && !hasDebugFlag('handheld-skip')) {
+  bootRoot?.remove();
+  void import('./ui/DesktopOnlyNotice').then(({ showDesktopOnlyNotice }) => {
+    showDesktopOnlyNotice();
+  });
+} else {
+  startExperience();
+}
