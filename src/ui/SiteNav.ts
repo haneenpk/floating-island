@@ -1,4 +1,5 @@
 import { TOGGLE_AUDIO_EVENT } from '../audio/AudioSystem';
+import { chooseQualityTier, getQuality } from '../core/Quality';
 
 const WORDMARK = 'Aetheria';
 
@@ -23,6 +24,9 @@ export class SiteNav {
     this.root.innerHTML = `
       <span class="nav-wordmark">${WORDMARK}</span>
       <span class="nav-actions">
+        <button class="nav-item nav-detail" type="button" title="richer light, sharper textures — costs frames">
+          detail · ${getQuality().tier === 'medium' ? 'on' : 'off'}
+        </button>
         <button class="nav-item nav-sound" type="button">sound · on</button>
         <button class="nav-item nav-credits" type="button">Credits</button>
       </span>
@@ -40,6 +44,12 @@ export class SiteNav {
 
     this.soundButton = this.root.querySelector<HTMLButtonElement>('.nav-sound')!;
     this.soundButton.addEventListener('click', () => this.toggleSound());
+
+    // detail decides texture sizes, model LODs and shadows at startup, so
+    // switching it reloads into the other tier
+    this.root.querySelector<HTMLButtonElement>('.nav-detail')!.addEventListener('click', () => {
+      chooseQualityTier(getQuality().tier === 'medium' ? 'low' : 'medium');
+    });
 
     // inside the cottage the cursor is captured — M toggles the sound
     window.addEventListener('keydown', (event) => {

@@ -1,8 +1,12 @@
 import { downgradeQuality, isQualityOverridden } from './Quality';
 
-const WARMUP_SECONDS = 5;
-const WINDOW_SECONDS = 6;
-const MIN_AVERAGE_FPS = 22;
+// Judge early: a struggling machine should be eased down while the visitor
+// is still on the title, not once they are moving through the world. The
+// warm-up covers shader compilation, which stalls the first frames on any
+// machine and would otherwise read as weakness.
+const WARMUP_SECONDS = 3.5;
+const WINDOW_SECONDS = 4;
+const MIN_AVERAGE_FPS = 24;
 
 export class PerformanceWatchdog {
   private elapsed = 0;

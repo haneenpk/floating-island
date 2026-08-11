@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { AudioSystem } from './audio/AudioSystem';
 import { ExperienceCamera } from './camera/ExperienceCamera';
 import { Engine } from './core/Engine';
-import { getQuality } from './core/Quality';
+import { consumeAutoEasedNotice, getQuality } from './core/Quality';
 import { InteractionManager } from './interaction/InteractionManager';
 import { createPollen } from './scene/atmosphere/Pollen';
 import { CottageRoom } from './scene/interior/CottageRoom';
@@ -22,6 +22,7 @@ import { maybeCreateWaterSystem } from './scene/water/WaterSystem';
 import { getPanelContent } from './ui/panelContent';
 import { StoryPanel } from './ui/StoryPanel';
 import { hasDebugFlag } from './utils/debug';
+import { isHandheld } from './utils/device';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#webgl');
 
@@ -39,6 +40,12 @@ function bootFail(message: string): void {
   bootFill?.parentElement?.remove();
 }
 
+// if the watchdog eased the detail down last time, say so rather than
+// letting the world quietly come back looking different
+if (bootNote && consumeAutoEasedNotice()) {
+  bootNote.textContent = 'easing the detail down for a smoother flight…';
+}
+
 function bootFinish(): void {
   if (bootFill) bootFill.style.width = '100%';
   window.setTimeout(() => {
@@ -47,20 +54,29 @@ function bootFinish(): void {
   }, 250);
 }
 
-let engine: Engine;
-try {
-  engine = new Engine(canvas);
-} catch (error) {
-  bootFail('this little world needs WebGL — please try another browser');
-  throw error;
-}
+// assigned by startExperience, which a handheld visitor may never reach
+let engine!: Engine;
 
-// LoadingManager totals grow as loads enqueue, so keep the bar monotonic
-let bootProgress = 0;
-engine.assets.onProgress((_url, loaded, total) => {
-  if (total > 0) bootProgress = Math.max(bootProgress, loaded / total);
-  if (bootFill) bootFill.style.width = `${Math.round(bootProgress * 96)}%`;
-});
+function startExperience(): void {
+  try {
+    engine = new Engine(canvas!);
+  } catch (error) {
+    bootFail('this little world needs WebGL — please try another browser');
+    throw error;
+  }
+
+  // LoadingManager totals grow as loads enqueue, so keep the bar monotonic
+  let bootProgress = 0;
+  engine.assets.onProgress((_url, loaded, total) => {
+    if (total > 0) bootProgress = Math.max(bootProgress, loaded / total);
+    if (bootFill) bootFill.style.width = `${Math.round(bootProgress * 96)}%`;
+  });
+
+  void bootstrap().catch((error) => {
+    console.error('Failed to bootstrap experience', error);
+    bootFail('the island failed to load — please refresh');
+  });
+}
 
 // TESTING ONLY: boot straight into the cottage interior, skipping the
 // landing overlay, intro and journey. Set back to false to restore the
@@ -124,6 +140,15 @@ async function bootstrap(): Promise<void> {
 
   const audio = new AudioSystem(engine.camera, engine.assets);
   engine.sceneManager.register(audio);
+
+  // The sky's environment map lights every material in the scene, including
+  // the ones under the cottage roof. Indoors it is turned down so the room
+  // is lit by its own hearth and lamps rather than by the weather.
+  const scene = engine.sceneManager.scene;
+  const outdoorEnvironment = scene.environmentIntensity;
+  const setIndoorLight = (inside: boolean): void => {
+    scene.environmentIntensity = inside ? outdoorEnvironment * 0.38 : outdoorEnvironment;
+  };
 
   // The interior room floats in the sky, its round window aimed back at the
   // living island; interactable objects inside are future navigation points.
@@ -234,6 +259,7 @@ async function bootstrap(): Promise<void> {
       audio,
       (inside) => {
         engine.postSuspended = inside;
+        setIndoorLight(inside);
         nav.setInterior(inside);
         if (inside) retireScrollHint?.();
       },
@@ -255,6 +281,7 @@ async function bootstrap(): Promise<void> {
       document.documentElement.style.overflow = 'hidden';
       audio.setIndoor(true, room.getWindowWorld());
       engine.postSuspended = true;
+      setIndoorLight(true);
       nav.setInterior(true);
     };
     if (import.meta.env.DEV) {
@@ -339,7 +366,13 @@ async function addFauna(island: FloatingIsland): Promise<Butterfly> {
   return butterfly;
 }
 
-void bootstrap().catch((error) => {
-  console.error('Failed to bootstrap experience', error);
-  bootFail('the island failed to load — please refresh');
-});
+// A phone or tablet gets the doorway instead — no renderer, no models, no
+// hundreds of megabytes downloaded for a world it cannot steer.
+if (isHandheld() && !hasDebugFlag('handheld-skip')) {
+  bootRoot?.remove();
+  void import('./ui/DesktopOnlyNotice').then(({ showDesktopOnlyNotice }) => {
+    showDesktopOnlyNotice();
+  });
+} else {
+  startExperience();
+}
