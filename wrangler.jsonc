@@ -1,0 +1,14 @@
+{
+  // Aetheria is a static world: no server code, just the built output.
+  // Cloudflare serves `dist` directly, so no `main` entry point is declared
+  // and the deploy is assets-only.
+  //
+  // `_headers` inside dist still applies — that is where the caching rules
+  // for the world's models and textures live.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "floating-island",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
