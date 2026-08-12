@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/prune-dist.mjs",
     "preview": "vite preview",
     "preview:host": "vite preview --host",
     "assets:lods": "node scripts/generate-lods.mjs"
