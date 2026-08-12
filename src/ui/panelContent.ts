@@ -52,6 +52,16 @@ const MAP_SVG = `
   </g>
 </svg>`;
 
+/** One framed plate in the gallery: the picture, its name, and its note. */
+function plate(file: string, title: string, note: string): string {
+  return `
+    <figure>
+      <img src="/assets/gallery/${file}.jpg" alt="${title}" loading="lazy">
+      <figcaption><strong>${title}</strong><span>${note}</span></figcaption>
+    </figure>
+  `;
+}
+
 export function getPanelContent(): Record<string, PanelContent> {
   return {
     story: {
@@ -94,10 +104,36 @@ export function getPanelContent(): Record<string, PanelContent> {
       wide: true,
       html: `
         <div class="gallery-grid">
-          <figure><img src="/assets/gallery/the_island.jpg" alt="the island adrift" loading="lazy"><figcaption>the island, adrift</figcaption></figure>
-          <figure><img src="/assets/gallery/the_hearth.jpg" alt="the hearth" loading="lazy"><figcaption>the hearth, always lit</figcaption></figure>
-          <figure><img src="/assets/gallery/the_loft.jpg" alt="the loft" loading="lazy"><figcaption>the loft</figcaption></figure>
-          <figure><img src="/assets/gallery/the_window.jpg" alt="the round window" loading="lazy"><figcaption>the round window</figcaption></figure>
+          ${plate(
+            'the_island',
+            'the island, adrift',
+            'Grown from a single number: the same seed always raises the same hill, carves the same river, and hangs the same roots beneath the rock.',
+          )}
+          ${plate(
+            'the_doorway',
+            'the doorstep',
+            'Stones trodden into the grass, a lamp at the gate, and a door that is only ever unlatched — the way in is lit for you.',
+          )}
+          ${plate(
+            'the_tree',
+            'the great tree',
+            'Older than the floating itself. Lanterns hang where its branches will hold them, and a sister island drifts past beyond.',
+          )}
+          ${plate(
+            'the_falls',
+            'the falls',
+            'The river reaches the rim and simply keeps going, becoming weather for whatever lies below.',
+          )}
+          ${plate(
+            'the_hearth',
+            'the hearth',
+            'Stacked wood over an ember bed, and a flame with real depth to it — the brightest thing in the room, as it should be.',
+          )}
+          ${plate(
+            'the_window',
+            'the round window',
+            'From the loft, the tree fills the glass. A lantern sways just outside it, close enough to read by.',
+          )}
         </div>
       `,
     },

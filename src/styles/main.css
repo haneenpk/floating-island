@@ -594,12 +594,27 @@ body::-webkit-scrollbar {
 }
 
 .gallery-grid figcaption {
-  margin-top: 0.45rem;
+  margin-top: 0.55rem;
+  text-align: left;
+}
+
+.gallery-grid figcaption strong {
+  display: block;
+  font-weight: normal;
   font-style: italic;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  color: rgba(247, 243, 234, 0.6);
-  text-align: center;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: rgba(233, 213, 173, 0.92);
+}
+
+.gallery-grid figcaption span {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: system-ui, sans-serif;
+  font-size: 0.76rem;
+  font-weight: 300;
+  line-height: 1.65;
+  color: rgba(247, 243, 234, 0.5);
 }
 
 /* the crystal */

@@ -98,16 +98,3 @@ overrides both, and a hand-picked tier is never second-guessed.
 across both tiers and the whole experience; the textures are compressed against
 that measurement, and the build drops what nothing asks for. A visit costs
 46–73 MB depending on tier, with the returning visitor paying almost nothing.
-
-## Credits
-
-Every asset is CC0 or freely licensed, with provenance recorded beside it in
-`SOURCE.txt` files:
-
-- **Environment scans, skies and interior textures** — [Poly Haven](https://polyhaven.com) (CC0)
-- **Cottage and furniture** — [Quaternius](https://poly.pizza) (CC0)
-- **Parrot** — mirada for *ro.me*, distributed with three.js (CC-BY)
-- **Sound** — [Mixkit](https://mixkit.co)
-- **Cinzel** — Natanael Gama (SIL Open Font License)
-
-The CC-BY credit is carried in the site itself, at the foot of the story panel.
