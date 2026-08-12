@@ -73,6 +73,12 @@ export function getPanelContent(): Record<string, PanelContent> {
         the next cloud passes.</p>
         <p>Perhaps they left the door unlocked for you.</p>
         <p class="story-sign">— from the Keeper's journal</p>
+        <p class="story-credit">
+          Built with Three.js. The birds are “Parrot” by mirada for
+          <em>ro.me</em> (CC-BY); the land is scanned by Poly Haven and the
+          cottage furnished by Quaternius (both CC0); sound from Mixkit; set
+          in Cinzel by Natanael Gama.
+        </p>
       `,
     },
     world: {

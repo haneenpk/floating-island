@@ -3,17 +3,8 @@ import { chooseQualityTier, getQuality } from '../core/Quality';
 
 const WORDMARK = 'Aetheria';
 
-const CREDITS = [
-  'environment scans & skies — poly haven (cc0)',
-  'house & interior props — quaternius (cc0)',
-  'parrot — mirada, ro.me (cc-by)',
-  'sound — mixkit',
-  'type — cinzel by natanael gama (ofl)',
-];
-
 export class SiteNav {
   private readonly root: HTMLElement;
-  private readonly panel: HTMLDivElement;
   private readonly soundButton: HTMLButtonElement;
   private soundOn = true;
   private interior = false;
@@ -28,19 +19,10 @@ export class SiteNav {
           detail · ${getQuality().tier === 'medium' ? 'on' : 'off'}
         </button>
         <button class="nav-item nav-sound" type="button">sound · on</button>
-        <button class="nav-item nav-credits" type="button">Credits</button>
       </span>
     `;
 
-    this.panel = document.createElement('div');
-    this.panel.id = 'credits-panel';
-    this.panel.innerHTML = CREDITS.map((line) => `<p>${line}</p>`).join('');
-
-    document.body.append(this.root, this.panel);
-
-    this.root.querySelector<HTMLButtonElement>('.nav-credits')!.addEventListener('click', () => {
-      this.panel.classList.toggle('open');
-    });
+    document.body.append(this.root);
 
     this.soundButton = this.root.querySelector<HTMLButtonElement>('.nav-sound')!;
     this.soundButton.addEventListener('click', () => this.toggleSound());
@@ -65,11 +47,10 @@ export class SiteNav {
     window.dispatchEvent(new CustomEvent(TOGGLE_AUDIO_EVENT));
   }
 
-  /** Indoors: credits step aside; only the sound toggle remains (and M). */
+  /** Indoors: only the sound toggle remains (switching detail would reload). */
   setInterior(inside: boolean): void {
     this.interior = inside;
     this.root.classList.toggle('interior', inside);
-    if (inside) this.panel.classList.remove('open');
   }
 
   show(): void {
