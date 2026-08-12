@@ -10,6 +10,18 @@ const FLYIN_DURATION = 7;
 const ARRIVAL_PAUSE = 1.1;
 const HANDOFF_SECONDS = 2.2;
 
+// Radians of turn per pixel of mouse travel. At the old 0.0042 a sweep of a
+// 1920-wide screen spun you through some 460 degrees, which reads as the
+// view being thrown rather than turned; this is a little over half that.
+const LOOK_SENSITIVITY_X = 0.0019;
+const LOOK_SENSITIVITY_Y = 0.0015;
+// how quickly the camera catches up with the mouse — high enough to feel
+// direct, low enough to absorb an uneven frame
+const LOOK_FOLLOW_RATE = 26;
+// a single event should never turn the view more than this many pixels'
+// worth; drivers occasionally emit one huge delta on pointer capture
+const MAX_LOOK_STEP = 110;
+
 type Phase = 'hold' | 'intro' | 'idle' | 'flyin' | 'pause' | 'journey' | 'transit' | 'interior';
 
 const arrival = CAMERA_SHOTS[0]!;
@@ -92,9 +104,13 @@ export class ExperienceCamera {
   private readonly interiorTarget = new Vector3();
   private readonly parallax = new Vector2();
 
-  // interior first-person state: drag to look, WASD to walk
+  // interior first-person state: drag to look, WASD to walk. The look pair
+  // is where the mouse has asked to point; the interior pair is where the
+  // camera has actually got to, a frame or two behind.
   private interiorYaw = 0;
   private interiorPitch = 0;
+  private lookYaw = 0;
+  private lookPitch = 0;
   private interiorConstrain: ((position: Vector3) => void) | null = null;
   private readonly keysDown = new Set<string>();
   private dragging = false;
@@ -112,17 +128,9 @@ export class ExperienceCamera {
         // pointer locked: the mouse steers the view directly, like a game;
         // unlocked (e.g. after Esc) falls back to drag-look
         if (document.pointerLockElement) {
-          this.interiorYaw -= event.movementX * 0.0042;
-          this.interiorPitch = Math.min(
-            Math.max(this.interiorPitch - event.movementY * 0.0032, -0.7),
-            0.7,
-          );
+          this.aimBy(event.movementX, event.movementY);
         } else if (this.dragging) {
-          this.interiorYaw -= (event.clientX - this.lastPointerX) * 0.0042;
-          this.interiorPitch = Math.min(
-            Math.max(this.interiorPitch - (event.clientY - this.lastPointerY) * 0.0032, -0.7),
-            0.7,
-          );
+          this.aimBy(event.clientX - this.lastPointerX, event.clientY - this.lastPointerY);
         }
       }
       this.lastPointerX = event.clientX;
@@ -193,8 +201,26 @@ export class ExperienceCamera {
     scratchTarget.copy(target).sub(position).normalize();
     this.interiorYaw = Math.atan2(scratchTarget.x, scratchTarget.z);
     this.interiorPitch = Math.asin(scratchTarget.y);
+    this.lookYaw = this.interiorYaw;
+    this.lookPitch = this.interiorPitch;
     this.setPhase('interior');
     this.requestPointerLock();
+  }
+
+  /**
+   * Turn the head. The mouse sets where the view is *going*; update() eases
+   * the camera toward it, which takes the jitter out of uneven pointer
+   * deltas and stops a dropped frame from reading as a jolt. Large single
+   * deltas are clipped: some drivers deliver a spike on the first event
+   * after the pointer is captured, which otherwise whips the view around.
+   */
+  private aimBy(deltaX: number, deltaY: number): void {
+    const clip = (value: number): number => Math.max(-MAX_LOOK_STEP, Math.min(MAX_LOOK_STEP, value));
+    this.lookYaw -= clip(deltaX) * LOOK_SENSITIVITY_X;
+    this.lookPitch = Math.min(
+      Math.max(this.lookPitch - clip(deltaY) * LOOK_SENSITIVITY_Y, -0.7),
+      0.7,
+    );
   }
 
   /** Capture the mouse for game-style look (silently ignored if denied). */
@@ -294,6 +320,12 @@ export class ExperienceCamera {
         // target even while standing still
         this.interiorConstrain?.(this.interiorPos);
 
+        // ease the head toward where the mouse asked to point, framerate
+        // independent so it feels the same at 30 frames as at 60
+        const follow = 1 - Math.exp(-time.delta * LOOK_FOLLOW_RATE);
+        this.interiorYaw += (this.lookYaw - this.interiorYaw) * follow;
+        this.interiorPitch += (this.lookPitch - this.interiorPitch) * follow;
+
         this.camera.position.copy(this.interiorPos);
         scratchTarget
           .set(
@@ -304,7 +336,9 @@ export class ExperienceCamera {
           .multiplyScalar(5)
           .add(this.interiorPos);
         this.camera.lookAt(scratchTarget);
-        break;
+        // no idle sway indoors: the visitor is the one standing here, and a
+        // breathing camera reads as unsteadiness rather than life
+        return;
       }
 
       case 'journey': {
