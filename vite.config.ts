@@ -6,6 +6,9 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // The source is private; a published map would hand out the whole of it,
+    // and the maps outweigh the bundle they describe. Turn them on locally
+    // when a production-only bug needs chasing.
+    sourcemap: false,
   },
 });

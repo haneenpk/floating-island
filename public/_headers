@@ -1,0 +1,27 @@
+# Caching rules for Cloudflare Pages and Netlify.
+#
+# dist/assets holds two very different things: Vite's build output, whose
+# names carry a content hash, and the world's models, textures, audio and
+# video, copied across with stable names. The first can be cached forever;
+# the second must be allowed to change when a new build lands.
+
+# The world. A day in cache, then revalidate — a visitor returning the same
+# afternoon pays nothing, and a deploy still reaches them by tomorrow.
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Build output. The hash in the filename changes whenever the contents do,
+# so these can never go stale.
+/assets/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+# The page itself must always be fresh, or it would go on asking for a
+# build that no longer exists.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
