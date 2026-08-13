@@ -119,7 +119,6 @@ async function bootstrap(): Promise<void> {
   if (water) {
     heroIsland.add(water);
     engine.sceneManager.register(water);
-    water.addMist(cloudTexture);
   }
   engine.refreshShadows();
 
