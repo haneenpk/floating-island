@@ -264,11 +264,11 @@ export function buildFurniture(props: RoomProps): {
   group.add(map);
   interactables.push({ id: 'world', label: 'the world', object: map });
 
-  // the painting — Gallery (above the mantle): the island itself, framed
+  // the painting — Gallery, hung in the loft: the island itself, framed
   const painting = new Group();
-  // on the flat brick band between the mantle (y 2.2) and the breast's
-  // step back at y 2.9; that face sits at x ≈ -3.88
-  painting.position.set(-3.84, 2.58, -0.6);
+  // the chimney breast carries on up through the loft, narrower than below,
+  // and its face sits at x ≈ -3.97 — hung at standing eye height up there
+  painting.position.set(-3.93, UPPER_Y + 1.45, -0.6);
   painting.rotation.y = Math.PI / 2;
   const frame = new Mesh(
     box(0.78, 0.56, 0.06),
