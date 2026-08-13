@@ -3,6 +3,7 @@ import type { Time } from '../core/Time';
 import { applyCameraBreath } from './cameraBreath';
 import { CameraRig } from './CameraRig';
 import { CAMERA_SHOTS } from './cameraShots';
+import { ThirdPersonView, type ExploreTarget } from './thirdPersonView';
 
 const INTRO_DURATION = 9;
 const OVERLAY_CUE = 0.72;
@@ -22,7 +23,16 @@ const LOOK_FOLLOW_RATE = 26;
 // worth; drivers occasionally emit one huge delta on pointer capture
 const MAX_LOOK_STEP = 110;
 
-type Phase = 'hold' | 'intro' | 'idle' | 'flyin' | 'pause' | 'journey' | 'transit' | 'interior';
+type Phase =
+  | 'hold'
+  | 'intro'
+  | 'idle'
+  | 'flyin'
+  | 'pause'
+  | 'journey'
+  | 'transit'
+  | 'interior'
+  | 'explore';
 
 const arrival = CAMERA_SHOTS[0]!;
 
@@ -112,6 +122,13 @@ export class ExperienceCamera {
   private lookYaw = 0;
   private lookPitch = 0;
   private interiorConstrain: ((position: Vector3) => void) | null = null;
+
+  // third-person outdoor walking
+  private exploreTarget: ExploreTarget | null = null;
+  private onExploreExit: (() => void) | null = null;
+  private exploring = false;
+  private readonly view = new ThirdPersonView();
+
   private readonly keysDown = new Set<string>();
   private dragging = false;
   private lastPointerX = 0;
@@ -124,7 +141,7 @@ export class ExperienceCamera {
       this.parallax.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.parallax.y = (event.clientY / window.innerHeight) * 2 - 1;
 
-      if (this.phase === 'interior' && !document.body.classList.contains('overlay-open')) {
+      if (this.isMouseLook() && !document.body.classList.contains('overlay-open')) {
         // pointer locked: the mouse steers the view directly, like a game;
         // unlocked (e.g. after Esc) falls back to drag-look
         if (document.pointerLockElement) {
@@ -143,7 +160,7 @@ export class ExperienceCamera {
       // regain game-style mouse look after the browser released it (Esc),
       // but not while a story panel holds the cursor
       if (
-        this.phase === 'interior' &&
+        this.isMouseLook() &&
         !document.pointerLockElement &&
         !document.body.classList.contains('overlay-open')
       ) {
@@ -153,7 +170,25 @@ export class ExperienceCamera {
     window.addEventListener('pointerup', () => {
       this.dragging = false;
     });
-    window.addEventListener('keydown', (event) => this.keysDown.add(event.key.toLowerCase()));
+    // Letting go of the mouse is how you stop walking the island. Esc both
+    // releases the pointer and ends the walk — but the browser swallows the
+    // key that released it, so the lock itself is what we listen to.
+    document.addEventListener('pointerlockchange', () => {
+      if (this.phase !== 'explore' || document.pointerLockElement) return;
+      // The lock is released on the way *in*, too: leaving the cottage hands
+      // the camera back before the walk picks up again, and that release
+      // arrives a moment after it has. Only a release made once the visitor
+      // is already walking means they let go.
+      if (this.phaseTime > 0.4) this.leaveExplore();
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && this.phase === 'explore') this.leaveExplore();
+    });
+    window.addEventListener('keydown', (event) => {
+      // space is the jump; left to itself it would also work the page
+      if (event.key === ' ' && this.phase === 'explore') event.preventDefault();
+      this.keysDown.add(event.key.toLowerCase());
+    });
     window.addEventListener('keyup', (event) => this.keysDown.delete(event.key.toLowerCase()));
     window.addEventListener('blur', () => this.keysDown.clear());
   }
@@ -205,6 +240,52 @@ export class ExperienceCamera {
     this.lookPitch = this.interiorPitch;
     this.setPhase('interior');
     this.requestPointerLock();
+  }
+
+  /**
+   * Take up station behind the traveler: the mouse swings the view around
+   * them, WASD walks. The opening angle is whichever way they are already
+   * facing, so taking control does not spin the world.
+   */
+  enterExplore(target: ExploreTarget, facing: number, onExit: () => void): void {
+    this.exploreTarget = target;
+    this.onExploreExit = onExit;
+    this.exploring = true;
+    this.interiorYaw = facing;
+    this.lookYaw = facing;
+    // a little above their shoulder, looking down the way they are going
+    this.interiorPitch = -0.16;
+    this.lookPitch = -0.16;
+
+    // start where the camera already is and let it swing round, rather than
+    // cutting to the shoulder
+    this.view.reset(this.camera.position);
+    this.setPhase('explore');
+    this.requestPointerLock();
+  }
+
+  /** Hand the island back to the scroll journey. */
+  private leaveExplore(): void {
+    if (this.phase !== 'explore') return;
+    const done = this.onExploreExit;
+    this.exploreTarget = null;
+    this.onExploreExit = null;
+    this.exploring = false;
+    done?.();
+  }
+
+  /**
+   * Whether walking is what the outdoors was doing. Stepping into the cottage
+   * suspends the walk rather than ending it, so this stays true through the
+   * whole visit and the door can put the visitor back on their feet.
+   */
+  get walkWasActive(): boolean {
+    return this.exploring;
+  }
+
+  /** Phases where the mouse turns the view rather than parallaxing it. */
+  private isMouseLook(): boolean {
+    return this.phase === 'interior' || this.phase === 'explore';
   }
 
   /**
@@ -338,6 +419,40 @@ export class ExperienceCamera {
         this.camera.lookAt(scratchTarget);
         // no idle sway indoors: the visitor is the one standing here, and a
         // breathing camera reads as unsteadiness rather than life
+        return;
+      }
+
+      case 'explore': {
+        const target = this.exploreTarget;
+        if (!target) return;
+
+        // ease the view first, then walk: the keys are read against where
+        // the camera has actually got to, so W goes where the screen looks
+        const follow = 1 - Math.exp(-time.delta * LOOK_FOLLOW_RATE);
+        this.interiorYaw += (this.lookYaw - this.interiorYaw) * follow;
+        this.interiorPitch += (this.lookPitch - this.interiorPitch) * follow;
+
+        const paused = document.body.classList.contains('overlay-open');
+        const keys = paused ? new Set<string>() : this.keysDown;
+        target.step(
+          time.delta,
+          {
+            forward:
+              (keys.has('w') || keys.has('arrowup') ? 1 : 0) -
+              (keys.has('s') || keys.has('arrowdown') ? 1 : 0),
+            right:
+              (keys.has('d') || keys.has('arrowright') ? 1 : 0) -
+              (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
+            run: keys.has('shift'),
+            jump: keys.has(' '),
+          },
+          this.interiorYaw,
+        );
+
+        this.view.update(target, this.interiorYaw, this.interiorPitch, time.delta);
+        this.camera.position.copy(this.view.position);
+        this.camera.lookAt(this.view.lookAt);
+        // the walk supplies all the movement this shot needs
         return;
       }
 

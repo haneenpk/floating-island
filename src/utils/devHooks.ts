@@ -1,4 +1,4 @@
-import { Raycaster, Vector2, Vector3, type Object3D } from 'three';
+import { Box3, Raycaster, Vector2, Vector3, type Object3D } from 'three';
 import type { ExperienceCamera } from '../camera/ExperienceCamera';
 import type { Engine } from '../core/Engine';
 import type { CottageRoom } from '../scene/interior/CottageRoom';
@@ -12,6 +12,9 @@ export interface DevHookContext {
   storyPanel: StoryPanel;
   panelContent: Record<string, PanelContent>;
   enterInside: () => void;
+  walkOutside: () => void;
+  /** the island's own height field, sampled in island space */
+  groundAt: (x: number, z: number) => number;
 }
 
 /**
@@ -21,7 +24,8 @@ export interface DevHookContext {
  * tree-shake the whole module away.
  */
 export function installDevHooks(context: DevHookContext): void {
-  const { engine, experience, room, storyPanel, panelContent, enterInside } = context;
+  const { engine, experience, room, storyPanel, panelContent, enterInside, walkOutside, groundAt } =
+    context;
   const target = window as unknown as Record<string, unknown>;
 
   // room-local look (walk = apply the interior floor/collision constraint)
@@ -74,7 +78,11 @@ export function installDevHooks(context: DevHookContext): void {
           if (node.name) chain.push(node.name);
           node = node.parent;
         }
-        return `${hit.distance.toFixed(1)}m ${hit.object.type} [${chain.join(' < ')}]`;
+        const p = hit.point;
+        return (
+          `${hit.distance.toFixed(1)}m at ${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)} ` +
+          `${hit.object.type} [${chain.join(' < ')}]`
+        );
       });
   };
 
@@ -89,7 +97,43 @@ export function installDevHooks(context: DevHookContext): void {
     return found;
   };
 
+  // how big is it, really? world-space size of everything matching a name
+  target['__devSize'] = (name: string) => {
+    const found: string[] = [];
+    engine.sceneManager.scene.traverse((node) => {
+      if (!node.name.includes(name)) return;
+      const box = new Box3().setFromObject(node);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new Vector3());
+      found.push(
+        `${node.name}: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}` +
+          ` (y ${box.min.y.toFixed(2)}..${box.max.y.toFixed(2)})`,
+      );
+    });
+    return found;
+  };
+
+  // what is the camera doing, and does it still think it is out walking?
+  target['__devState'] = () => {
+    const camera = engine.camera.position;
+    return {
+      walkWasActive: experience.walkWasActive,
+      pointerLocked: document.pointerLockElement !== null,
+      overflow: document.documentElement.style.overflow,
+      camera: [
+        +camera.x.toFixed(3),
+        +camera.y.toFixed(3),
+        +camera.z.toFixed(3),
+      ],
+    };
+  };
+
+  // how high is the land here? island space, straight off the height field
+  target['__devGround'] = (x: number, z: number) => groundAt(x, z);
+
   target['__devInside'] = enterInside;
+  // take up the traveler's walk without hunting for the prompt first
+  target['__devWalk'] = walkOutside;
   target['__devPanel'] = (id: string) => {
     const content = panelContent[id];
     if (content) storyPanel.show(content);
