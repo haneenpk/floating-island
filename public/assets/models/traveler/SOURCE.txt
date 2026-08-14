@@ -1,0 +1,35 @@
+traveler.glb - "Rogue_Hooded" from the KayKit Adventurers Character Pack (1.0)
+by Kay Lousberg - CC0 (public domain), no attribution required, commercial use
+permitted.
+
+Source: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+        addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb
+Pack:   https://kaylousberg.com/game-assets/characters-adventurers
+Licence: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/blob/main/LICENSE.txt
+
+Rebuilt from the original with:
+
+  node scripts/unface-model.mjs Rogue_Hooded.glb faceless.glb Rogue_Head_Hooded
+  node scripts/trim-glb-animations.mjs faceless.glb traveler.glb \
+      Idle Walking_A Running_A Jump_Full_Long Jump_Idle
+
+Changes made to the original:
+  - The face is removed from the mesh, not hidden. Every triangle on the head
+    was sampled against the character sheet and the ones that came back skin,
+    brow or eye were dropped - 445 of them, leaving 328 of hood cloth. There is
+    no lighting or camera angle that can reveal a feature that is not there.
+  - 71 of its 76 animation clips removed, keeping Idle, Walking_A, Running_A,
+    Jump_Full_Long and Jump_Idle; unreferenced accessors and buffer views
+    pruned. 3.43 MB -> 0.52 MB.
+
+Changes made at load time (src/scene/character/Traveler.ts):
+  - The costume is repainted off the character sheet, which is an 8 x 4 grid of
+    flat gradients with one cell per surface: the pack's green becomes the blue
+    of the hood and cloak, the tunic and sleeves become cream, the trousers
+    charcoal, the fittings brass. See travelerPalette.ts.
+  - The hood is filled with an unlit black form, since removing the face leaves
+    the hood an open shell.
+  - The pack's weapon attachments (knives, crossbows, throwable) are hidden.
+  - Backpack, bedroll, belt satchel, walking staff and hanging lantern are
+    built from primitives rather than downloaded - no extra assets, and they
+    match the reference more closely than any stock prop would.

@@ -39,16 +39,30 @@ function applyVegetationWind(gltf: GLTF, category: PlacementCategory): void {
 
   gltf.scene.traverse((child) => {
     if (!(child instanceof Mesh)) return;
-    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
     for (const material of materials) {
       if (!(material instanceof MeshStandardMaterial)) continue;
 
       if (category === "foliage") {
-        applyWind(material, { amplitude: height * 0.07, flutter: height * 0.02, height });
+        applyWind(material, {
+          amplitude: height * 0.07,
+          flutter: height * 0.02,
+          height,
+        });
       } else if (material.name.includes("leaves")) {
-        applyWind(material, { amplitude: height * 0.012, flutter: height * 0.0022, height });
+        applyWind(material, {
+          amplitude: height * 0.012,
+          flutter: height * 0.0022,
+          height,
+        });
       } else if (material.name.includes("branch")) {
-        applyWind(material, { amplitude: height * 0.009, flutter: height * 0.0008, height });
+        applyWind(material, {
+          amplitude: height * 0.009,
+          flutter: height * 0.0008,
+          height,
+        });
       } else {
         applyWind(material, { amplitude: height * 0.005, flutter: 0, height });
       }
@@ -320,15 +334,13 @@ export async function composeHeroIsland(
     ...activeProps.map((prop) => prop.model),
     ...activeZones.map((zone) => zone.model),
   ]);
-  await Promise.all(
-    [
-      ...[...usedModels].map(async (key) => {
-        const gltf = await assets.loadModel(key, modelUrl(key));
-        applyVegetationWind(gltf, MODEL_FILES[key].category);
-      }),
-      assets.loadModel(HOUSE_KEY, HOUSE_URL),
-    ],
-  );
+  await Promise.all([
+    ...[...usedModels].map(async (key) => {
+      const gltf = await assets.loadModel(key, modelUrl(key));
+      applyVegetationWind(gltf, MODEL_FILES[key].category);
+    }),
+    assets.loadModel(HOUSE_KEY, HOUSE_URL),
+  ]);
 
   const dressing = new Group();
   dressing.name = "hero-dressing";
@@ -352,7 +364,9 @@ export async function composeHeroIsland(
     // a worn path where feet pass daily
     house.traverse((child) => {
       if (!(child instanceof Mesh)) return;
-      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      const materials = Array.isArray(child.material)
+        ? child.material
+        : [child.material];
       materials.forEach((material, i) => {
         if (!(material instanceof MeshStandardMaterial)) return;
         if (!/window|glass/i.test(`${child.name} ${material.name}`)) return;
@@ -370,7 +384,9 @@ export async function composeHeroIsland(
     // model. The pad height plus HOUSE_TARGET_HEIGHT is exact by
     // construction, so use that.
     const pad = island.surface.getHeightAt(x, z);
-    smoke = new CottageSmoke(new Vector3(x, pad + HOUSE_TARGET_HEIGHT - 0.7, z));
+    smoke = new CottageSmoke(
+      new Vector3(x, pad + HOUSE_TARGET_HEIGHT - 0.7, z),
+    );
     dressing.add(smoke);
     updatables.push(smoke);
 
@@ -386,7 +402,11 @@ export async function composeHeroIsland(
     const wear = createWornGround(1.5);
     const wearX = x + Math.sin(HOUSE_YAW) * 2.2;
     const wearZ = z + Math.cos(HOUSE_YAW) * 2.2;
-    wear.position.set(wearX, island.surface.getHeightAt(wearX, wearZ) + 0.04, wearZ);
+    wear.position.set(
+      wearX,
+      island.surface.getHeightAt(wearX, wearZ) + 0.04,
+      wearZ,
+    );
     dressing.add(wear);
   }
 
@@ -449,7 +469,8 @@ function supportSlab(
       // the last (lowest) hit is the slab's underside in this column
       localPoint.copy(hits[hits.length - 1]!.point);
       island.worldToLocal(localPoint);
-      const gap = localPoint.y - island.surface.getHeightAt(localPoint.x, localPoint.z);
+      const gap =
+        localPoint.y - island.surface.getHeightAt(localPoint.x, localPoint.z);
       if (gap > 0.22 && gap < 2.6) {
         gaps.push({ x: localPoint.x, z: localPoint.z, gap });
       }
@@ -460,7 +481,11 @@ function supportSlab(
   const chosen: { x: number; z: number; gap: number }[] = [];
   for (const candidate of gaps) {
     if (chosen.length >= 6) break;
-    if (chosen.every((c) => Math.hypot(c.x - candidate.x, c.z - candidate.z) >= 0.85)) {
+    if (
+      chosen.every(
+        (c) => Math.hypot(c.x - candidate.x, c.z - candidate.z) >= 0.85,
+      )
+    ) {
       chosen.push(candidate);
     }
   }

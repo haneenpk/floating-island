@@ -111,7 +111,6 @@ const waterfallVertexShader = /* glsl */ `
 const waterfallFragmentShader = /* glsl */ `
   uniform sampler2D uVideo;
   uniform float uTime;
-  uniform float uRepeatV;
   uniform vec3 uFoamColor;
 
   varying vec2 vUv;
@@ -128,8 +127,14 @@ const waterfallFragmentShader = /* glsl */ `
 
     // sample only the footage's main strand so the ribbon is continuous
     // water — the dark rock gap between the two filmed strands would
-    // otherwise key out as a hole in the middle of our fall
-    vec2 videoUv = vec2(mix(0.06, 0.52, vUv.x + wobble), vUv.y * uRepeatV);
+    // otherwise key out as a hole in the middle of our fall.
+    //
+    // V runs backwards: the footage falls down its own frame, but three.js
+    // flips V when it uploads a texture, so reading it straight would put the
+    // filmed crest at our foot and send the water up. Both ends are inset —
+    // the rock lip at the very top of the frame is dark enough to key out,
+    // and would tear a gap where our river breaks over the edge.
+    vec2 videoUv = vec2(mix(0.06, 0.52, vUv.x + wobble), mix(0.94, 0.03, vUv.y));
     vec3 water = texture2D(uVideo, videoUv).rgb;
     float luma = dot(water, vec3(0.2126, 0.7152, 0.0722));
 
@@ -195,7 +200,6 @@ export function createWaterfallMaterial(
       UniformsLib.fog,
       {
         uVideo: { value: null },
-        uRepeatV: { value: 1.0 },
         uFoamColor: { value: new Color(0xf4f9fc) },
       },
     ]),

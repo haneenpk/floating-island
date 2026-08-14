@@ -1,5 +1,7 @@
 import { Vector3 } from 'three';
 import { AudioSystem } from './audio/AudioSystem';
+import { Traveler } from './scene/character/Traveler';
+import { TravelerController } from './scene/character/TravelerController';
 import { ExperienceCamera } from './camera/ExperienceCamera';
 import { Engine } from './core/Engine';
 import { consumeAutoEasedNotice, getQuality } from './core/Quality';
@@ -119,7 +121,6 @@ async function bootstrap(): Promise<void> {
   if (water) {
     heroIsland.add(water);
     engine.sceneManager.register(water);
-    water.addMist(cloudTexture);
   }
   engine.refreshShadows();
 
@@ -128,6 +129,7 @@ async function bootstrap(): Promise<void> {
     engine.sceneManager.register(updatable);
   }
   const butterfly = await addFauna(heroIsland);
+  const { traveler, walk } = await addTraveler(heroIsland);
 
   // sister islands, wearing the hero island's own scanned textures and its
   // small tree — built after the composition so both are already loaded
@@ -247,6 +249,9 @@ async function bootstrap(): Promise<void> {
     const nav = new SiteNav();
     // set once the landing overlay exists; indoors the scroll hint is moot
     let retireScrollHint: (() => void) | null = null;
+    let offerScrollHint: (() => void) | null = null;
+    // assigned below; the portal needs to be able to hand the walk back
+    let resumeTheWalk: (() => void) | null = null;
     const portal = new CottagePortal(
       heroIsland,
       composition.house,
@@ -263,8 +268,49 @@ async function bootstrap(): Promise<void> {
         nav.setInterior(inside);
         if (inside) retireScrollHint?.();
       },
+      () => {
+        // only if they were on their feet when they came in — someone who
+        // reached the door from the journey camera goes back to it
+        if (experience.walkWasActive) resumeTheWalk?.();
+      },
     );
     engine.sceneManager.register(portal);
+
+    /**
+     * Walking the island is what outdoors *is*: the journey camera becomes
+     * the thing you fall back to rather than the thing you start in. The
+     * cottage door stays live throughout — you walk up to it and press E,
+     * which is the whole point of having feet — so only the traveler's own
+     * prompt stands down, or it would follow the cursor everywhere asking
+     * them to become themselves.
+     */
+    const takeTheWalk = (announce: boolean): void => {
+      interaction.setGroupEnabled('traveler', false);
+      document.documentElement.style.overflow = 'hidden';
+      retireScrollHint?.();
+      experience.enterExplore(walk, walk.facing, () => {
+        document.documentElement.style.overflow = '';
+        interaction.setGroupEnabled('traveler', true);
+        // letting go hands back the scroll journey, so say so again
+        offerScrollHint?.();
+      });
+      if (announce) {
+        interaction.announce(
+          'w a s d to walk — shift to run — space to jump — click to look — Esc to let go',
+        );
+      }
+    };
+    resumeTheWalk = () => takeTheWalk(false);
+    interaction.register(
+      traveler.hitArea,
+      'traveler',
+      'walk with the traveler',
+      () => takeTheWalk(true),
+      traveler,
+      true,
+      32,
+    );
+    interaction.setGroupEnabled('traveler', false);
 
     // the same world-swap the portal performs, applied immediately
     const devEnterInside = (): void => {
@@ -293,6 +339,8 @@ async function bootstrap(): Promise<void> {
         storyPanel,
         panelContent,
         enterInside: devEnterInside,
+        walkOutside: () => takeTheWalk(true),
+        groundAt: (x, z) => heroIsland.surface.getHeightAt(x, z),
       });
     }
 
@@ -308,13 +356,17 @@ async function bootstrap(): Promise<void> {
         void audio.begin(heroIsland);
       });
       retireScrollHint = () => overlay.hideHint();
+      offerScrollHint = () => overlay.showHint();
       // the cottage only invites you in once the journey has begun; during
       // the title and fly-in the prompt would be an interruption
       interaction.setGroupEnabled('exterior', false);
       experience.onJourneyStart = () => {
         nav.show();
-        overlay.showHint();
         interaction.setGroupEnabled('exterior', true);
+        // The fly-in ends on your own two feet. The scroll journey is still
+        // there behind Esc, so nothing is lost — but arriving somewhere and
+        // then being handed a scrollbar was never the truer version of it.
+        takeTheWalk(true);
       };
       experience.beginIntro(() => overlay.show());
     }
@@ -329,6 +381,30 @@ async function bootstrap(): Promise<void> {
   }
 
   bootFinish();
+}
+
+/**
+ * The one figure on the island. They stand in the meadow between the tree and
+ * the cottage during the journey, and the visitor can step into their walk.
+ * A child of the island, like the cottage and the birds, so they ride its
+ * drift rather than sliding across it.
+ */
+async function addTraveler(
+  island: FloatingIsland,
+): Promise<{ traveler: Traveler; walk: TravelerController }> {
+  const model = await engine.assets.loadModel('traveler', '/assets/models/traveler/traveler.glb');
+  const traveler = new Traveler(model);
+  island.add(traveler);
+  engine.sceneManager.register(traveler);
+
+  const walk = new TravelerController(traveler, island, island.surface);
+  // out in the open meadow, clear of the tree's knoll and the cottage garden
+  const angle = 4.3;
+  const planar = island.surface.capRadiusAt(Math.cos(angle), Math.sin(angle)) * 0.52;
+  // facing the cottage, so taking control starts you looking somewhere
+  walk.placeAt(Math.cos(angle) * planar, Math.sin(angle) * planar, 5.7);
+
+  return { traveler, walk };
 }
 
 async function addFauna(island: FloatingIsland): Promise<Butterfly> {

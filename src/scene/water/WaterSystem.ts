@@ -5,11 +5,8 @@ import {
   Group,
   Mesh,
   MirroredRepeatWrapping,
-  Sprite,
-  SpriteMaterial,
   Vector3,
   type IUniform,
-  type Texture,
 } from 'three';
 import type { Time } from '../../core/Time';
 import { lerp } from '../../utils/math';
@@ -30,16 +27,8 @@ interface StripPoint {
   halfWidth: number;
 }
 
-interface MistPuff {
-  sprite: Sprite;
-  baseScale: number;
-  phase: number;
-}
-
 export class WaterSystem extends Group implements Updatable {
   private readonly timeUniform: IUniform<number> = { value: 0 };
-  private readonly mistAnchor = new Vector3();
-  private readonly mists: MistPuff[] = [];
 
   constructor(
     private readonly surface: IslandSurface,
@@ -62,46 +51,6 @@ export class WaterSystem extends Group implements Updatable {
 
   update(time: Time): void {
     this.timeUniform.value = time.elapsed;
-
-    for (const [i, mist] of this.mists.entries()) {
-      const t = time.elapsed * 0.35 + mist.phase;
-      const swell = 1 + Math.sin(t) * 0.18;
-      mist.sprite.scale.setScalar(mist.baseScale * swell);
-
-      const material = mist.sprite.material as SpriteMaterial;
-      material.opacity = 0.38 + Math.sin(t * 0.7) * 0.08;
-      material.rotation += time.delta * 0.03 * (i % 2 === 0 ? 1 : -1);
-    }
-  }
-
-  /**
-   * Soft spray where the fall dissolves — reuses the cloud billboard texture
-   * so no new asset is loaded. Called from bootstrap once that texture exists.
-   */
-  addMist(texture: Texture): void {
-    if (this.mists.length > 0 || this.children.length === 0) return;
-
-    const offsets = [
-      new Vector3(0, 0, 0),
-      new Vector3(1.6, 1.2, 0.8),
-      new Vector3(-1.3, 2.4, -0.6),
-    ];
-
-    offsets.forEach((offset, i) => {
-      const material = new SpriteMaterial({
-        map: texture,
-        transparent: true,
-        depthWrite: false,
-        opacity: 0.4,
-        rotation: i * 2.1,
-        fog: true,
-      });
-      const sprite = new Sprite(material);
-      sprite.position.copy(this.mistAnchor).add(offset);
-      sprite.renderOrder = 3;
-      this.mists.push({ sprite, baseScale: 5.5 + i * 1.6, phase: i * 2.3 });
-      this.add(sprite);
-    });
   }
 
   private buildRiverPoints(): StripPoint[] {
@@ -186,8 +135,6 @@ export class WaterSystem extends Group implements Updatable {
         halfWidth: lerp(0.7, 2.2, t),
       });
     }
-
-    this.mistAnchor.set(dirX * rim * 0.87, y0 - 23, dirZ * rim * 0.87);
 
     const video = createLoopingVideoTexture('/assets/videos/waterfall.mp4');
     video.wrapT = MirroredRepeatWrapping;

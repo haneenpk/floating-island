@@ -44,6 +44,9 @@ export class CottagePortal implements Updatable {
     private readonly audio: AudioSystem | null = null,
     // notified behind the fades: true entering the room, false leaving
     private readonly onWorldSwap: ((inside: boolean) => void) | null = null,
+    // called once the visitor is back outside and the camera has been handed
+    // over, so the outdoors can pick up whatever it was doing before
+    private readonly onBackOutside: (() => void) | null = null,
   ) {
     const surface = island.surface;
     const dirX = Math.cos(HOUSE_ANGLE);
@@ -174,6 +177,9 @@ export class CottagePortal implements Updatable {
     this.experience.resumeJourney();
     document.documentElement.style.overflow = '';
     this.interaction.setGroupEnabled('exterior', true);
+    // whatever was happening out here before the door opened — the traveler's
+    // walk, most likely — gets to resume before the fade lifts
+    this.onBackOutside?.();
     await this.fade.toClear(0.9);
     this.busy = false;
   }
