@@ -28,11 +28,19 @@ interface Interactable {
   idlePulse: boolean;
   /** how close (world units) the camera must be to focus it */
   range: number;
+  /**
+   * Which side it may be approached from, as a flat direction pointing away
+   * from the object, and how closely the visitor must line up with it. A door
+   * is answered from its step and not through the wall behind it.
+   */
+  approach: { x: number; z: number; minDot: number } | null;
 }
 
 const HIGHLIGHT_COLOR = new Color(0xffc27a);
 const scratchColor = new Color();
 const scratchPosition = new Vector3();
+const scratchReach = new Vector3();
+const scratchApproach = new Vector3();
 
 /**
  * Pointer -> world interaction: raycast hover with a soft emissive pulse and
@@ -51,6 +59,8 @@ export class InteractionManager implements Updatable {
   private beacon: Interactable | null = null;
   private prompted: Interactable | null = null;
   private pointerDirty = false;
+  /** what "close enough" is measured from — the camera unless told otherwise */
+  private reachFrom: Object3D | null = null;
 
   constructor(private readonly camera: PerspectiveCamera) {
     this.caption = document.createElement('div');
@@ -83,6 +93,7 @@ export class InteractionManager implements Updatable {
     highlightRoot: Object3D = root,
     idlePulse = false,
     range = Infinity,
+    approach: { x: number; z: number; minDot: number } | null = null,
   ): void {
     const highlights: HighlightEntry[] = [];
     highlightRoot.traverse((child) => {
@@ -102,7 +113,17 @@ export class InteractionManager implements Updatable {
       });
     });
 
-    this.items.push({ root, label, onActivate, group, highlights, pulse: 0, idlePulse, range });
+    this.items.push({
+      root,
+      label,
+      onActivate,
+      group,
+      highlights,
+      pulse: 0,
+      idlePulse,
+      range,
+      approach,
+    });
   }
 
   setGroupEnabled(group: string, enabled: boolean): void {
@@ -126,11 +147,18 @@ export class InteractionManager implements Updatable {
       this.pointerDirty = false;
       this.raycaster.setFromCamera(this.pointer, this.camera);
 
+      // reach is measured from the visitor, who outdoors is several units in
+      // front of the camera — so test the hit point, not the ray's length
+      const reach = this.reachFrom
+        ? this.reachFrom.getWorldPosition(scratchReach)
+        : this.camera.position;
+
       let hit: Interactable | null = null;
       for (const item of this.items) {
         if (!this.enabledGroups.has(item.group)) continue;
         const intersections = this.raycaster.intersectObject(item.root, true);
-        if (intersections.length > 0 && intersections[0]!.distance <= item.range) {
+        const first = intersections[0];
+        if (first && first.point.distanceTo(reach) <= item.range && this.approached(item, reach)) {
           hit = item;
           break;
         }
@@ -165,6 +193,19 @@ export class InteractionManager implements Updatable {
     }
   }
 
+  /**
+   * Whose reach counts.
+   *
+   * Indoors the camera *is* the visitor, so range is measured from it. Out on
+   * the island the camera trails several units behind the traveler's shoulder,
+   * and measuring from there would have prompts appearing while they were
+   * still a stride short of the door — or worse, from the wrong side of it.
+   * Point this at the traveler while they are walking.
+   */
+  setReachFrom(source: Object3D | null): void {
+    this.reachFrom = source;
+  }
+
   /** Flash a short message in the caption slot (activation feedback). */
   announce(text: string): void {
     this.caption.textContent = text;
@@ -176,17 +217,22 @@ export class InteractionManager implements Updatable {
     }, 1800);
   }
 
-  /** The nearest marked object that is in front of the camera and in reach. */
+  /** The nearest marked object that is on screen and within reach. */
   private findBeacon(): Interactable | null {
     let best: Interactable | null = null;
     let bestDistance = Infinity;
+
+    const reach = this.reachFrom
+      ? this.reachFrom.getWorldPosition(scratchReach)
+      : this.camera.position;
 
     for (const item of this.items) {
       if (!item.idlePulse || !this.enabledGroups.has(item.group)) continue;
 
       item.root.getWorldPosition(scratchPosition);
-      const distance = scratchPosition.distanceTo(this.camera.position);
+      const distance = scratchPosition.distanceTo(reach);
       if (distance > item.range || distance >= bestDistance) continue;
+      if (!this.approached(item, reach)) continue;
 
       // on screen, and not so near the edge that the prompt feels unmoored
       scratchPosition.project(this.camera);
@@ -197,6 +243,20 @@ export class InteractionManager implements Updatable {
       bestDistance = distance;
     }
     return best;
+  }
+
+  /**
+   * Whether the visitor is standing on the side this thing may be used from.
+   * Without it, the cottage answers from behind its own back wall.
+   */
+  private approached(item: Interactable, from: Vector3): boolean {
+    if (!item.approach) return true;
+    item.root.getWorldPosition(scratchApproach);
+    const dx = from.x - scratchApproach.x;
+    const dz = from.z - scratchApproach.z;
+    const length = Math.hypot(dx, dz);
+    if (length < 1e-4) return true;
+    return (dx / length) * item.approach.x + (dz / length) * item.approach.z >= item.approach.minDot;
   }
 
   private setPrompt(item: Interactable | null): void {
