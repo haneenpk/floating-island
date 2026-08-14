@@ -1,4 +1,5 @@
 import { Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3, type Object3D } from 'three';
+import { pushOutOf, type Blocker } from '../composition/solidGround';
 import type { IslandSurface } from '../islands/IslandSurface';
 import { RUN_SPEED, WALK_SPEED, type Traveler } from './Traveler';
 
@@ -33,6 +34,33 @@ const TURN_DRAG = 0.62;
 const STILL_SPEED = 0.06;
 // stay this far in from the rim: the ground falls away past it
 const EDGE_MARGIN = 0.9;
+// How wide the traveler stands, for the purpose of not being inside a wall.
+// Measured off the hood and pack rather than the waist: those are the widest
+// parts of them, and it is a shoulder going into stonework that reads as
+// walking through a wall, not a hip.
+const BODY_RADIUS = 0.36;
+// How far above and below the feet a ledge is looked for. Up has to clear the
+// whole shelf — it stands well over head height in places, and a ray that
+// started below its top would pass under the rock and find nothing, which is
+// exactly how you end up walking about inside it.
+const LEDGE_REACH_UP = 4.0;
+const LEDGE_REACH_DOWN = 0.9;
+// The tallest thing that can be climbed in one movement. Generous enough for
+// the spring shelf, mean enough that no rooftop can ever answer.
+const MAX_CLIMB = 1.15;
+// how quickly the feet reach a new footing — fast enough to be invisible on
+// the meadow, slow enough that climbing the shelf is a climb
+const FOOTING_SETTLE = 13;
+// The points the ground is asked about: the middle of the traveler and the
+// four edges of them. Five samples is enough to keep a shoulder out of a
+// rock without the cost of tracing a whole silhouette.
+const FOOTPRINT: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [BODY_RADIUS, 0],
+  [-BODY_RADIUS, 0],
+  [0, BODY_RADIUS],
+  [0, -BODY_RADIUS],
+];
 // 0 = always upright, 1 = lie flat along the hillside
 const SLOPE_LEAN = 0.45;
 // how fast the ground's slope is allowed to reach the body — a hillside that
@@ -67,6 +95,8 @@ const scratchYaw = new Quaternion();
 const scratchDirection = new Vector3();
 const scratchSample = new Vector3();
 const sightRay = new Raycaster();
+const ledgeRay = new Raycaster();
+const DOWN = new Vector3(0, -1, 0);
 
 /**
  * Walks the traveler over the island.
@@ -86,18 +116,30 @@ export class TravelerController {
   /** height above the ground, and how fast that is changing */
   private lift = 0;
   private rise = 0;
+  /** the height the feet are actually at, easing toward whatever is underfoot */
+  private footing = 0;
   private jumpHeld = false;
   private jumpBuffered = 0;
   /** how hard the last landing was, for whoever wants to react to it */
   private impact = 0;
   /** meshes solid enough to stand between the camera and the traveler */
   private obstacles: Mesh[] | null = null;
+  /** the subset of those you can stand on — no trunks, no rooftops */
+  private standables: Mesh[] | null = null;
+  /** shapes solid enough to stop the traveler walking into them */
+  private blockers: readonly Blocker[] = [];
 
   constructor(
     private readonly traveler: Traveler,
     private readonly island: Object3D,
     private readonly surface: IslandSurface,
   ) {}
+
+  /** What the traveler cannot walk through. */
+  setBlockers(blockers: readonly Blocker[]): void {
+    this.blockers = blockers;
+  }
+
 
   /** Which way the traveler is facing, in island space. */
   get facing(): number {
@@ -123,7 +165,8 @@ export class TravelerController {
 
   /** Stand the traveler at a point in island space, facing `yaw`. */
   placeAt(x: number, z: number, yaw: number): void {
-    this.traveler.position.set(x, this.surface.getHeightAt(x, z), z);
+    this.footing = this.surface.getHeightAt(x, z);
+    this.traveler.position.set(x, this.footing, z);
     this.yaw = yaw;
     this.velocity.set(0, 0, 0);
     this.speed = 0;
@@ -235,9 +278,13 @@ export class TravelerController {
     }
 
     const position = this.traveler.position;
+    const wasX = position.x;
+    const wasZ = position.z;
+    const standing = this.surface.getHeightAt(wasX, wasZ) + this.lift;
     position.x += this.velocity.x * delta;
     position.z += this.velocity.z * delta;
     this.holdInsideTheRim(position);
+    this.keepOutOfSolidThings(position, wasX, wasZ, delta);
 
     // The body turns toward where it is going, quickly when it is barely
     // moving and lazily at a run — a sprinter's turning circle is wider.
@@ -252,7 +299,13 @@ export class TravelerController {
 
     this.applyLift(delta, input.jump, grounded);
 
-    position.y = this.surface.getHeightAt(position.x, position.z) + this.lift;
+    // The ground is climbed onto rather than snapped to: stepping up onto the
+    // shelf is a rise of most of the traveler's own height, and taking it in
+    // one frame reads as being teleported. Eased, it reads as clambering.
+    const footing = this.standOn(position.x, position.z, standing);
+    this.footing += (footing - this.footing) * (1 - Math.exp(-delta * FOOTING_SETTLE));
+    if (Math.abs(footing - this.footing) < 0.005) this.footing = footing;
+    position.y = this.footing + this.lift;
     this.settleOnTheSlope(delta, position);
     this.applyPose();
     this.traveler.setPace(this.speed, this.lift > 0);
@@ -314,6 +367,111 @@ export class TravelerController {
     }
   }
 
+  /**
+   * Stand the traveler out of anything solid.
+   *
+   * Each blocker is grown by the traveler's own width and the point is pushed
+   * to its edge — a wall of any kind is the same problem once you are only
+   * asking "how do I get out of this shape the short way". Because the push
+   * is perpendicular to the surface, the part of the step running along the
+   * wall survives it, so walking into the cottage slides along the wall
+   * rather than sticking to it.
+   *
+   * The velocity is then taken from the distance actually covered, not the
+   * distance asked for, which stops the walk animation sprinting on the spot
+   * against a wall.
+   */
+  private keepOutOfSolidThings(
+    position: Vector3,
+    wasX: number,
+    wasZ: number,
+    delta: number,
+  ): void {
+    if (this.blockers.length === 0 || delta <= 0) return;
+
+    let moved = false;
+    for (const blocker of this.blockers) {
+      const grown =
+        blocker.kind === 'round'
+          ? { ...blocker, radius: blocker.radius + BODY_RADIUS }
+          : {
+              ...blocker,
+              halfX: blocker.halfX + BODY_RADIUS,
+              halfZ: blocker.halfZ + BODY_RADIUS,
+            };
+      if (pushOutOf(grown, position)) moved = true;
+    }
+    if (!moved) return;
+
+    this.velocity.x = (position.x - wasX) / delta;
+    this.velocity.z = (position.z - wasZ) / delta;
+    this.speed = Math.hypot(this.velocity.x, this.velocity.z);
+  }
+
+  /**
+   * The height of whatever the traveler is actually standing on.
+   *
+   * The spring outcrop is a shelf, not a wall: its top is a surface, and
+   * walking *under* it was only ever possible because the ground beneath it
+   * was the only thing being asked about. A ray dropped from head height
+   * finds the shelf if it is there, and the higher of the two answers wins.
+   */
+  private standOn(x: number, z: number, standing: number): number {
+    // Sampled around the whole footprint rather than under one point, and the
+    // HIGHEST answer wins. A single sample puts the feet on whatever is
+    // directly below the middle of the traveler, which at the edge of a rock
+    // means half the body is inside the rock beside them. Standing on the
+    // highest thing under any part of you is what keeps you on top of an edge
+    // instead of in it.
+    let highest = -Infinity;
+    for (const [offsetX, offsetZ] of FOOTPRINT) {
+      const sampleX = x + offsetX;
+      const sampleZ = z + offsetZ;
+      const terrain = this.surface.getHeightAt(sampleX, sampleZ);
+      const ledge = this.ledgeUnder(sampleX, sampleZ, standing);
+      highest = Math.max(highest, ledge === null ? terrain : Math.max(terrain, ledge));
+    }
+    return highest;
+  }
+
+  /**
+   * How high the ledge is over a point, or null where there is none. The ray
+   * starts above the traveler's head and stops a little below their feet, so
+   * only a surface they are actually on or about to meet can answer.
+   */
+  private ledgeUnder(x: number, z: number, standing: number): number | null {
+    // Everything solid is stood on, not only the one shelf that was handed
+    // over: the same list the camera traces against is every large rock on
+    // the island, and a traveler who can walk onto one of them should be able
+    // to walk onto any of them. Foliage and the small scatter are not in it,
+    // so nothing is gained by stepping on a fern.
+    const standable = this.standableThings();
+    if (standable.length === 0) return null;
+
+    scratchGround.set(x, standing + LEDGE_REACH_UP, z);
+    this.island.localToWorld(scratchGround);
+    ledgeRay.set(scratchGround, DOWN);
+    ledgeRay.far = LEDGE_REACH_UP + LEDGE_REACH_DOWN;
+
+    // Raycasting does not care whether a thing is visible, and the cottage's
+    // interior is a whole room parked inside the hillside, hidden until you
+    // step through the door. Left in, its floor is the highest surface for
+    // several units around the cottage — and the traveler walks up onto it,
+    // in mid-air, outside the house.
+    const hits = ledgeRay.intersectObjects(standable, true);
+    const first = hits.find((hit) => isShown(hit.object));
+    if (!first) return null;
+
+    scratchSample.copy(first.point);
+    const top = this.island.worldToLocal(scratchSample).y;
+
+    // Nothing is climbed in one step that a person could not climb. Without
+    // this, a surface belonging to a building's upper storey — a porch beam,
+    // a balcony edge — answers the ray and the traveler is stood on it, two
+    // storeys up, unable to reach the door underneath.
+    return top > standing + MAX_CLIMB ? null : top;
+  }
+
   /** Let the hillside reach the body over a moment rather than at once. */
   private settleOnTheSlope(delta: number, position: Vector3): void {
     this.surface.getNormalAt(position.x, position.z, scratchNormal);
@@ -336,6 +494,33 @@ export class TravelerController {
    * foliage: those are the alpha-tested materials, and they are precisely the
    * ones a camera may pass through without anybody minding.
    */
+  /**
+   * The subset of solid things you can stand on top of.
+   *
+   * The tree and the cottage are struck out. A ray dropped beside a trunk
+   * hits the bark two metres up and answers "the ground is here" — and the
+   * traveler is suddenly standing in the branches. Anything you are meant to
+   * walk *around* has no top worth finding, so it is not asked.
+   */
+  private standableThings(): Mesh[] {
+    if (this.standables) return this.standables;
+
+    // Trunks and walls have no top worth finding. Neither has a fence rail or
+    // a lamp post: they are long and tall enough to pass the size filter, so
+    // a ray dropped beside one lands on the rail and stands the traveler in
+    // mid-air next to it.
+    // ("dressing" alone would be too broad — every prop on the island hangs
+    // under hero-dressing, the rocks included, and those are stood on.)
+    const goAround = /tree|house|trunk|branch|leaves|garden|fence|lamp|post|room/i;
+    this.standables = this.solidThings().filter((mesh) => {
+      for (let node: Object3D | null = mesh; node; node = node.parent) {
+        if (goAround.test(node.name)) return false;
+      }
+      return true;
+    });
+    return this.standables;
+  }
+
   private solidThings(): Mesh[] {
     if (this.obstacles) return this.obstacles;
 
@@ -364,6 +549,14 @@ export class TravelerController {
     this.obstacles = found;
     return found;
   }
+}
+
+/** Whether an object and everything above it in the scene is visible. */
+function isShown(object: Object3D): boolean {
+  for (let node: Object3D | null = object; node; node = node.parent) {
+    if (!node.visible) return false;
+  }
+  return true;
 }
 
 /** Shortest way round from `from` to `to`, eased by `t`. */
