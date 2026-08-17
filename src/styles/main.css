@@ -632,3 +632,192 @@ body::-webkit-scrollbar {
   0%, 100% { opacity: 0.5; transform: scale(0.85); }
   50% { opacity: 1; transform: scale(1.1); }
 }
+
+/* the map, questioned */
+.world-map .map-place {
+  cursor: pointer;
+  outline: none;
+}
+
+.world-map .map-halo {
+  fill: rgba(233, 213, 173, 0);
+  stroke: rgba(233, 213, 173, 0);
+  stroke-width: 1.5;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.world-map .map-place:hover .map-halo,
+.world-map .map-place:focus-visible .map-halo,
+.world-map .map-place.reading .map-halo {
+  fill: rgba(233, 213, 173, 0.14);
+  stroke: rgba(233, 213, 173, 0.5);
+}
+
+.map-reading {
+  min-height: 3.4rem;
+  margin-top: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 1px solid rgba(214, 190, 148, 0.3);
+  background: rgba(20, 17, 14, 0.35);
+}
+
+.map-reading strong {
+  display: block;
+  font-weight: normal;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  color: rgba(233, 213, 173, 0.92);
+}
+
+.map-reading span {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(247, 243, 234, 0.55);
+}
+
+/* the gallery, one plate at a time */
+.gallery-grid figure {
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.35s ease;
+}
+
+.gallery-grid figure:hover,
+.gallery-grid figure:focus-visible {
+  transform: translateY(-3px);
+}
+
+.gallery-grid figure:hover img,
+.gallery-grid figure:focus-visible img {
+  border-color: rgba(233, 213, 173, 0.55);
+}
+
+.plate-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3vh 4vw;
+  background: rgba(8, 7, 6, 0.88);
+  cursor: zoom-out;
+}
+
+.plate-viewer.open {
+  display: flex;
+}
+
+.plate-viewer img {
+  max-width: min(92vw, 1400px);
+  max-height: 78vh;
+  border-radius: 6px;
+  border: 1px solid rgba(214, 190, 148, 0.3);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+}
+
+.plate-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 5vh;
+  transform: translateX(-50%);
+  max-width: 44rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.plate-caption strong {
+  display: block;
+  font-weight: normal;
+  font-style: italic;
+  letter-spacing: 0.12em;
+  color: rgba(233, 213, 173, 0.95);
+}
+
+.plate-caption span {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(247, 243, 234, 0.62);
+}
+
+.plate-step {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid rgba(214, 190, 148, 0.25);
+  border-radius: 50%;
+  background: rgba(20, 17, 14, 0.5);
+  color: rgba(233, 213, 173, 0.85);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease;
+}
+
+.plate-step:hover {
+  border-color: rgba(233, 213, 173, 0.6);
+  color: rgba(247, 243, 234, 0.98);
+}
+
+/* the crystal's answer */
+.story-quote[data-whisper] {
+  min-height: 2.4rem;
+  color: rgba(143, 216, 210, 0.95);
+  text-shadow: 0 0 18px rgba(46, 143, 136, 0.45);
+}
+
+.story-quote[data-whisper]::after {
+  content: '▌';
+  margin-left: 0.15em;
+  animation: crystal-cursor 1s steps(2) infinite;
+}
+
+.story-quote[data-whisper].settled::after {
+  content: '';
+}
+
+@keyframes crystal-cursor {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.8; }
+}
+
+.crystal-aside {
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgba(247, 243, 234, 0.4);
+}
+
+/* the map's reading has to fit beside the map, not below the fold */
+.world-map {
+  max-height: 44vh;
+}
+
+/* the plate viewer: arrows at the edges, caption legible over any picture */
+.plate-viewer img {
+  max-width: min(84vw, 1300px);
+}
+
+.plate-step {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.plate-step[data-step="-1"] { left: 2.5vw; }
+.plate-step[data-step="1"] { right: 2.5vw; }
+
+.plate-caption {
+  padding: 0.8rem 1.4rem;
+  border-radius: 4px;
+  background: linear-gradient(rgba(8, 7, 6, 0), rgba(8, 7, 6, 0.82) 40%);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}

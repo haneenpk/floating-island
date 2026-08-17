@@ -201,6 +201,30 @@ export class Traveler extends Group implements Updatable {
   }
 
   /**
+   * Stand still, now, with no blending from whatever was playing.
+   *
+   * The weights are eased toward their mark every frame, which is right while
+   * walking and wrong the moment the traveler is placed: they would spend the
+   * first half second of the arrival shot easing out of a leap or a stride
+   * they never took. Called when they are put somewhere rather than when they
+   * move.
+   */
+  standStill(): void {
+    this.pace = 0;
+    this.airborne = false;
+    for (const action of [this.walk, this.run, this.leap, this.fall]) {
+      if (!action) continue;
+      action.weight = 0;
+      action.time = 0;
+    }
+    if (this.idle) {
+      this.idle.weight = 1;
+      this.idle.time = 0;
+    }
+    this.mixer.update(0);
+  }
+
+  /**
    * How fast the ground is going by, in world units a second, and whether
    * there is any ground underfoot at all. The gait follows from the pair.
    */

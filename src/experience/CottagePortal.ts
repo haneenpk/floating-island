@@ -80,9 +80,16 @@ export class CottagePortal implements Updatable {
       () => void this.enter(),
       this.houseDoor ? this.houseDoor.pivot : hit,
       true,
-      // the prompt should greet you as the journey brings the cottage into
-      // view, not only when the cursor happens to find the door
-      70,
+      // Arm's length from the threshold. This reached seventy units once,
+      // from when the cottage was approached by scrolling a camera at it, then
+      // five while the walk was new — but a door that offers itself from
+      // halfway across the garden is a label, not an invitation. You have to
+      // be standing at it.
+      2.4,
+      // And only from the step. Walking round the back of a cottage should
+      // not offer you its front door through the wall — you have to be
+      // standing where the door is, facing it.
+      { x: forwardX, z: forwardZ, minDot: 0.6 },
     );
 
     // warmth spilling around the threshold, breathing with the same slow

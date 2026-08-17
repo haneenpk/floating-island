@@ -3,6 +3,14 @@ export interface PanelContent {
   html: string;
   /** wide layout for image grids */
   wide?: boolean;
+  /**
+   * Called with the panel's body once its markup is in the document, for the
+   * pages that are more than something to read — the map you can question,
+   * the gallery you can step through, the crystal that answers differently
+   * each time. Anything registered here is torn down with the markup when the
+   * panel next opens, so there is nothing to unbind.
+   */
+  onShow?: (body: HTMLElement) => void;
 }
 
 /**
@@ -61,6 +69,7 @@ export class StoryPanel {
     this.relockOnClose = document.pointerLockElement !== null;
     if (document.pointerLockElement) document.exitPointerLock();
     this.body.scrollTop = 0;
+    content.onShow?.(this.body);
   }
 
   hide(): void {

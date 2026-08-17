@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { AudioSystem } from './audio/AudioSystem';
 import { Traveler } from './scene/character/Traveler';
 import { TravelerController } from './scene/character/TravelerController';
+import { CAMERA_SHOTS } from './camera/cameraShots';
 import { ExperienceCamera } from './camera/ExperienceCamera';
 import { Engine } from './core/Engine';
 import { consumeAutoEasedNotice, getQuality } from './core/Quality';
@@ -130,6 +131,8 @@ async function bootstrap(): Promise<void> {
   }
   const butterfly = await addFauna(heroIsland);
   const { traveler, walk } = await addTraveler(heroIsland);
+  // the cottage, the trunk and the big stones stop the walk; nothing else does
+  walk.setBlockers(composition.blockers);
 
   // sister islands, wearing the hero island's own scanned textures and its
   // small tree — built after the composition so both are already loaded
@@ -266,7 +269,11 @@ async function bootstrap(): Promise<void> {
         engine.postSuspended = inside;
         setIndoorLight(inside);
         nav.setInterior(inside);
-        if (inside) retireScrollHint?.();
+        // indoors the camera is the visitor again
+        if (inside) {
+          interaction.setReachFrom(null);
+          retireScrollHint?.();
+        }
       },
       () => {
         // only if they were on their feet when they came in — someone who
@@ -286,10 +293,13 @@ async function bootstrap(): Promise<void> {
      */
     const takeTheWalk = (announce: boolean): void => {
       interaction.setGroupEnabled('traveler', false);
+      // out here the traveler is the visitor, not the camera behind them
+      interaction.setReachFrom(traveler);
       document.documentElement.style.overflow = 'hidden';
       retireScrollHint?.();
       experience.enterExplore(walk, walk.facing, () => {
         document.documentElement.style.overflow = '';
+        interaction.setReachFrom(null);
         interaction.setGroupEnabled('traveler', true);
         // letting go hands back the scroll journey, so say so again
         offerScrollHint?.();
@@ -341,6 +351,7 @@ async function bootstrap(): Promise<void> {
         enterInside: devEnterInside,
         walkOutside: () => takeTheWalk(true),
         groundAt: (x, z) => heroIsland.surface.getHeightAt(x, z),
+        blockers: () => composition.blockers,
       });
     }
 
@@ -362,11 +373,13 @@ async function bootstrap(): Promise<void> {
       interaction.setGroupEnabled('exterior', false);
       experience.onJourneyStart = () => {
         nav.show();
+        overlay.showHint();
         interaction.setGroupEnabled('exterior', true);
-        // The fly-in ends on your own two feet. The scroll journey is still
-        // there behind Esc, so nothing is lost — but arriving somewhere and
-        // then being handed a scrollbar was never the truer version of it.
-        takeTheWalk(true);
+        // The fly-in hands over to the scroll journey, the way it always
+        // has — the island is shown to you before it is given to you. The
+        // traveler waits in the meadow with their own prompt, and the walk
+        // begins when you ask for it rather than the moment you land.
+        interaction.setGroupEnabled('traveler', true);
       };
       experience.beginIntro(() => overlay.show());
     }
@@ -398,11 +411,17 @@ async function addTraveler(
   engine.sceneManager.register(traveler);
 
   const walk = new TravelerController(traveler, island, island.surface);
-  // out in the open meadow, clear of the tree's knoll and the cottage garden
-  const angle = 4.3;
-  const planar = island.surface.capRadiusAt(Math.cos(angle), Math.sin(angle)) * 0.52;
-  // facing the cottage, so taking control starts you looking somewhere
-  walk.placeAt(Math.cos(angle) * planar, Math.sin(angle) * planar, 5.7);
+  // In the near meadow between the elder tree and the cottage — the ground
+  // the arrival shot looks straight down at, so whoever lands here sees who
+  // they can become before they are told about it.
+  const angle = 0.757;
+  const planar = island.surface.capRadiusAt(Math.cos(angle), Math.sin(angle)) * 0.3;
+  const x = Math.cos(angle) * planar;
+  const z = Math.sin(angle) * planar;
+  // and turned to face the camera that arrives, rather than showing it their
+  // back — worked out from the shot itself so the two cannot drift apart
+  const [camX, , camZ] = CAMERA_SHOTS[0]!.position;
+  walk.placeAt(x, z, Math.atan2(camX - x, camZ - z));
 
   return { traveler, walk };
 }

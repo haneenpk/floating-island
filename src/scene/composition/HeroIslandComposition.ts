@@ -3,6 +3,7 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  type Object3D,
   PointLight,
   Raycaster,
   Vector3,
@@ -22,6 +23,7 @@ import {
 } from "../placement/SurfacePlacer";
 import type { Updatable } from "../Updatable";
 import { GardenDressing } from "./GardenDressing";
+import type { Blocker } from "./solidGround";
 import { instanceModelAt, type InstancePoint } from "./instancedModelScatter";
 
 const windBox = new Box3();
@@ -152,6 +154,17 @@ const HOUSE_TARGET_HEIGHT = 7.6;
 const HOUSE_RADIAL = 0.44;
 const HOUSE_ANGLE = 6.05;
 const HOUSE_YAW = 0.67;
+
+// The height band a walker's body occupies — trunk measured there, not at the
+// roots where it flares nor up where it forks.
+const BOLE_BAND_LOW = 0.25;
+const BOLE_BAND_HIGH = 1.3;
+// how far apart two pieces of wood must be to count as separate boles
+const BOLE_SPREAD = 1.0;
+const BOLE_MARGIN = 0.12;
+// a cluster smaller than this is noise; a bole thinner than this is not a bole
+const BOLE_MIN_POINTS = 8;
+const BOLE_MIN_RADIUS = 0.4;
 
 const TREE_KEYS: ReadonlySet<ModelKey> = new Set([
   "islandTreeLarge",
@@ -304,6 +317,10 @@ export interface HeroComposition {
   smoke: CottageSmoke;
   /** the hero tree — hidden while inside the cottage (its canopy overlaps the room) */
   heroTree: Group | null;
+  /** what the traveler cannot walk through, in island space */
+  blockers: Blocker[];
+  /** surfaces the traveler stands on top of rather than passing under */
+  ledges: Object3D[];
 }
 
 export async function composeHeroIsland(
@@ -435,7 +452,174 @@ export async function composeHeroIsland(
   if (springSlab) {
     supportSlab(island, assets, placer, dressing, springSlab);
   }
-  return { updatables, house, smoke: smoke!, heroTree };
+  return {
+    updatables,
+    house,
+    smoke: smoke!,
+    heroTree,
+    blockers: solidThings(island, heroTree, garden.blockers),
+    // the one thing on the island you stand *on* rather than beside
+    ledges: springSlab ? [springSlab] : [],
+  };
+}
+
+/**
+ * The two things on this island you cannot walk through, worked out from the
+ * same polar constants that place them.
+ *
+ * The rocks are deliberately absent. They were blockers once, and being
+ * stopped a stride short of a boulder you can plainly see the top of felt
+ * like a bug rather than a wall — worse, it made them impossible to climb,
+ * since the blocker held you off the very footprint you were trying to stand
+ * on. They are stood upon instead, which the ground sampling already handles.
+ * Only the trunk and the cottage are things you must go around.
+ */
+function solidThings(
+  island: FloatingIsland,
+  heroTree: Group | null,
+  garden: readonly Blocker[],
+): Blocker[] {
+  const cottage = planarPoint(island, HOUSE_RADIAL, HOUSE_ANGLE);
+
+  return [
+    ...treeBoles(island, heroTree),
+    // the fence and the lamp post, as the garden itself laid them out
+    ...garden,
+    // The cottage, turned to face the way its door does, and sized to the
+    // stone base rather than the timber storey that overhangs it. The
+    // overhang begins nearly three units up and the traveler stands under
+    // one — it can never touch them, so blocking out to it only stops people
+    // a stride short of a wall they can see they have not reached.
+    //
+    // Pulled in by the traveler's own width, which the walk adds back, so
+    // they come to rest with their shoulder against the stonework.
+    {
+      kind: "box",
+      x: cottage.x,
+      z: cottage.z,
+      // The stone base measures 5.3 across when measured on the world axes —
+      // but the cottage is turned 0.67 radians, and an axis-aligned box round
+      // a rotated one is nearly half again too big. Undoing that rotation
+      // puts its true half-width at about 1.89, which is what these are, less
+      // the traveler's own width that the walk adds back.
+      halfX: 1.62,
+      halfZ: 1.62,
+      yaw: HOUSE_YAW,
+    },
+  ];
+}
+
+/**
+ * One collider per bole, measured off the tree itself.
+ *
+ * The hero tree is not a trunk but a handful of them, splayed out from the
+ * middle. A single circle is wrong either way round: tight, and you walk
+ * between the boles into the middle of the tree; wide, and you are stopped by
+ * thin air where no wood is. So the wood is asked directly — every vertex
+ * sitting in the band a walker's body occupies is gathered, clustered, and
+ * each cluster becomes a circle around one bole. The gaps between them stay
+ * open, because in the tree they are open.
+ *
+ * Leaves are excluded by their alpha-tested material, and this runs once at
+ * generation time, never per frame.
+ */
+function treeBoles(island: FloatingIsland, tree: Group | null): Blocker[] {
+  return uprightsIn(island, tree, {
+    spread: BOLE_SPREAD,
+    minPoints: BOLE_MIN_POINTS,
+    minRadius: BOLE_MIN_RADIUS,
+    margin: BOLE_MARGIN,
+    limit: 8,
+  });
+}
+
+interface ClusterRules {
+  spread: number;
+  minPoints: number;
+  minRadius: number;
+  margin: number;
+  limit: number;
+}
+
+function uprightsIn(
+  island: FloatingIsland,
+  tree: Group | null,
+  rules: ClusterRules,
+): Blocker[] {
+  if (!tree) return [];
+
+  const point = new Vector3();
+  const found: { x: number; z: number }[] = [];
+
+  tree.updateMatrixWorld(true);
+  tree.traverse((node) => {
+    if (!(node instanceof Mesh)) return;
+    const material = Array.isArray(node.material) ? node.material[0] : node.material;
+    if (material instanceof MeshStandardMaterial && material.alphaTest > 0) return;
+
+    const position = node.geometry.getAttribute("position");
+    if (!position) return;
+    for (let i = 0; i < position.count; i += 1) {
+      point.fromBufferAttribute(position, i).applyMatrix4(node.matrixWorld);
+      island.worldToLocal(point);
+      const above = point.y - island.surface.getHeightAt(point.x, point.z);
+      if (above < BOLE_BAND_LOW || above > BOLE_BAND_HIGH) continue;
+      found.push({ x: point.x, z: point.z });
+    }
+  });
+  if (found.length === 0) return [];
+
+  // greedy clustering: near an existing bole, or a new one
+  const boles: { x: number; z: number; count: number; radius: number }[] = [];
+  for (const spot of found) {
+    let nearest: (typeof boles)[number] | null = null;
+    let nearestGap = Infinity;
+    for (const bole of boles) {
+      const gap = Math.hypot(bole.x - spot.x, bole.z - spot.z);
+      if (gap < nearestGap) {
+        nearestGap = gap;
+        nearest = bole;
+      }
+    }
+    if (nearest && nearestGap < rules.spread) {
+      nearest.x = (nearest.x * nearest.count + spot.x) / (nearest.count + 1);
+      nearest.z = (nearest.z * nearest.count + spot.z) / (nearest.count + 1);
+      nearest.count += 1;
+    } else if (boles.length < rules.limit) {
+      boles.push({ x: spot.x, z: spot.z, count: 1, radius: 0 });
+    }
+  }
+
+  // and how wide each one actually is
+  for (const spot of found) {
+    let nearest: (typeof boles)[number] | null = null;
+    let nearestGap = Infinity;
+    for (const bole of boles) {
+      const gap = Math.hypot(bole.x - spot.x, bole.z - spot.z);
+      if (gap < nearestGap) {
+        nearestGap = gap;
+        nearest = bole;
+      }
+    }
+    if (nearest) nearest.radius = Math.max(nearest.radius, nearestGap);
+  }
+
+  const measured = boles
+    .filter((bole) => bole.count >= rules.minPoints)
+    .map((bole) => ({
+      kind: "round" as const,
+      x: bole.x,
+      z: bole.z,
+      // A cluster of a few verts can measure almost nothing across, which
+      // would be a collider you walk straight through. No bole is thinner
+      // than this in practice, so no collider is either.
+      radius: Math.max(bole.radius, rules.minRadius) + rules.margin,
+    }));
+
+  // If the mesh gave up nothing usable — a coarse LOD, a model that changed —
+  // one circle at the tree's middle is worse than per-bole but far better
+  // than a tree you can walk through.
+  return measured;
 }
 
 /**

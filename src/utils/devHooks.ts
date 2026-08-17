@@ -15,6 +15,8 @@ export interface DevHookContext {
   walkOutside: () => void;
   /** the island's own height field, sampled in island space */
   groundAt: (x: number, z: number) => number;
+  /** the shapes the traveler cannot walk through */
+  blockers: () => unknown;
 }
 
 /**
@@ -24,7 +26,7 @@ export interface DevHookContext {
  * tree-shake the whole module away.
  */
 export function installDevHooks(context: DevHookContext): void {
-  const { engine, experience, room, storyPanel, panelContent, enterInside, walkOutside, groundAt } =
+  const { engine, experience, room, storyPanel, panelContent, enterInside, walkOutside, groundAt, blockers } =
     context;
   const target = window as unknown as Record<string, unknown>;
 
@@ -130,6 +132,9 @@ export function installDevHooks(context: DevHookContext): void {
 
   // how high is the land here? island space, straight off the height field
   target['__devGround'] = (x: number, z: number) => groundAt(x, z);
+
+  // what is actually stopping the traveler, and where
+  target['__devBlockers'] = () => blockers();
 
   target['__devInside'] = enterInside;
   // take up the traveler's walk without hunting for the prompt first
