@@ -47,6 +47,15 @@ const DIP_RECOVERY = 9;
 const PITCH_MIN = -0.95;
 const PITCH_MAX = 0.55;
 
+// How long the camera takes to come from wherever it was to the traveler's
+// shoulder. The way *out* of the walk has always had a handoff like this; the
+// way in used to cut, which read as a jump rather than an arrival.
+const HANDOFF_SECONDS = 1.5;
+
+function smootherstep(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 const focus = new Vector3();
 const wanted = new Vector3();
 const forward = new Vector3();
@@ -66,6 +75,9 @@ export class ThirdPersonView {
   readonly lookAt = new Vector3();
 
   private readonly anchor = new Vector3();
+  private readonly heldPosition = new Vector3();
+  private readonly heldLookAt = new Vector3();
+  private handoff = 1;
   private distance = DISTANCE;
   private stride = 0;
   private dip = 0;
@@ -73,8 +85,12 @@ export class ThirdPersonView {
   private settled = false;
 
   /** Start from wherever the camera already is, and swing round from there. */
-  reset(from: Vector3): void {
+  reset(from: Vector3, lookingAt: Vector3): void {
     this.position.copy(from);
+    this.heldPosition.copy(from);
+    this.heldLookAt.copy(lookingAt);
+    this.lookAt.copy(lookingAt);
+    this.handoff = 0;
     this.distance = DISTANCE;
     this.stride = 0;
     this.dip = 0;
@@ -136,6 +152,15 @@ export class ThirdPersonView {
 
     // aim past the shoulder rather than at the hood itself
     this.lookAt.copy(this.anchor).addScaledVector(side, SHOULDER * 0.45 * pull);
+
+    // and, if the walk has only just been taken up, come from where the
+    // camera was rather than appearing behind them
+    if (this.handoff < 1) {
+      this.handoff = Math.min(this.handoff + delta / HANDOFF_SECONDS, 1);
+      const eased = smootherstep(this.handoff);
+      this.position.lerpVectors(this.heldPosition, this.position, eased);
+      this.lookAt.lerpVectors(this.heldLookAt, this.lookAt, eased);
+    }
   }
 
   /**

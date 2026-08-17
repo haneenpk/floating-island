@@ -257,9 +257,11 @@ export class ExperienceCamera {
     this.interiorPitch = -0.16;
     this.lookPitch = -0.16;
 
-    // start where the camera already is and let it swing round, rather than
-    // cutting to the shoulder
-    this.view.reset(this.camera.position);
+    // start where the camera already is, looking where it was looking, and
+    // travel to the shoulder from there rather than cutting to it
+    this.camera.getWorldDirection(scratchTarget);
+    scratchTarget.multiplyScalar(12).add(this.camera.position);
+    this.view.reset(this.camera.position, scratchTarget);
     this.setPhase('explore');
     this.requestPointerLock();
   }
@@ -271,6 +273,10 @@ export class ExperienceCamera {
     this.exploreTarget = null;
     this.onExploreExit = null;
     this.exploring = false;
+    // and actually hand the camera over. Letting go of the walk without this
+    // leaves the phase stranded with nothing to follow: the walk stops, the
+    // page scrolls again, and the view sits frozen where it was abandoned.
+    this.resumeJourney();
     done?.();
   }
 

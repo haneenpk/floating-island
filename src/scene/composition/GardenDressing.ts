@@ -17,6 +17,7 @@ import type { Time } from '../../core/Time';
 import { SeededRandom } from '../../procgen/SeededRandom';
 import type { IslandSurface } from '../islands/IslandSurface';
 import type { Updatable } from '../Updatable';
+import type { Blocker } from './solidGround';
 
 const HOUSE_ANGLE = 6.05;
 const HOUSE_RADIAL = 0.44;
@@ -32,8 +33,19 @@ const TREE_RADIAL = 0.3;
  * Everything static merges into one mesh per material — a few dozen posts,
  * rails and slabs would otherwise cost a draw call each on weak GPUs.
  */
+// A rail is a couple of fingers thick and a post not much more; anything
+// wider here is taken out of the ground beside them.
+const RAIL_RADIUS = 0.07;
+const POST_RADIUS = 0.12;
+
 export class GardenDressing extends Group implements Updatable {
   private readonly swings: { pivot: Group; phase: number; speed: number }[] = [];
+  /**
+   * What the woodwork stops, in island space — filled in as it is built. The
+   * fence knows where it put its own rails, which is a better answer than
+   * anything that could be measured off the mesh afterwards.
+   */
+  readonly blockers: Blocker[] = [];
 
   constructor(surface: IslandSurface, heroTree: Object3D | null = null) {
     super();
@@ -223,8 +235,32 @@ export class GardenDressing extends Group implements Updatable {
       this.add(lampLight);
     }
 
+    // The lamp post is a post: one circle, on the pole itself.
+    this.blockers.push({
+      kind: "round",
+      x: postSpot.x,
+      z: postSpot.z,
+      radius: POST_RADIUS,
+    });
+
     // ---- wooden fences: posts with two rails, following the terrain ----
     const fenceRun = (points: { x: number; z: number }[]): void => {
+      // Each run is recorded as it is built, so what stops the traveler is
+      // the fence's own layout rather than a guess made afterwards from its
+      // vertices — which is how you end up walking through a rail and being
+      // stopped by the grass beside it.
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i]!;
+        const b = points[i + 1]!;
+        this.blockers.push({
+          kind: "segment",
+          x1: a.x,
+          z1: a.z,
+          x2: b.x,
+          z2: b.z,
+          radius: RAIL_RADIUS,
+        });
+      }
       const tops: Vector3[] = points.map((point) => {
         const y = surface.getHeightAt(point.x, point.z);
         placer.position.set(point.x, y + 0.28, point.z);
@@ -259,15 +295,16 @@ export class GardenDressing extends Group implements Updatable {
       }
       fenceRun(points);
     };
-    pathFence(1.5, 4, 2.2);
-    pathFence(-1.55, 3, 2.6);
+    // Run back far enough to meet the cottage wall. They used to begin a
+    // stride out from it, which left a slot between fence and stonework that
+    // read as a way through — and a way through a garden fence wants either
+    // to be a gate or not to be there.
+    pathFence(1.5, 5, 1.3);
+    pathFence(-1.55, 4, 1.3);
 
-    // a short run along the rim beyond the house, like the concept art
-    const rimPoints: { x: number; z: number }[] = [];
-    for (let i = 0; i < 5; i++) {
-      rimPoints.push(planar(HOUSE_ANGLE - 0.34 - i * 0.09, 0.8));
-    }
-    fenceRun(rimPoints);
+    // (there was a fence run along the rim here once. It fenced off a cliff
+    //  nobody was going to walk over, and cost a wall in the one place the
+    //  view is the point.)
 
     // ---- stepping stones out the door, half-sunk in the turf ----
     for (let i = 0; i < 9; i++) {

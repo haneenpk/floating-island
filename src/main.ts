@@ -414,8 +414,8 @@ async function addTraveler(
   // In the near meadow between the elder tree and the cottage — the ground
   // the arrival shot looks straight down at, so whoever lands here sees who
   // they can become before they are told about it.
-  const angle = 1.0;
-  const planar = island.surface.capRadiusAt(Math.cos(angle), Math.sin(angle)) * 0.5;
+  const angle = 0.757;
+  const planar = island.surface.capRadiusAt(Math.cos(angle), Math.sin(angle)) * 0.3;
   const x = Math.cos(angle) * planar;
   const z = Math.sin(angle) * planar;
   // and turned to face the camera that arrives, rather than showing it their

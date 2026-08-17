@@ -175,6 +175,7 @@ export class TravelerController {
     this.impact = 0;
     this.surface.getNormalAt(x, z, this.groundNormal);
     this.applyPose();
+    this.traveler.standStill();
   }
 
   /** Where the camera should look: about the height of the hood. */
@@ -392,13 +393,13 @@ export class TravelerController {
     let moved = false;
     for (const blocker of this.blockers) {
       const grown =
-        blocker.kind === 'round'
-          ? { ...blocker, radius: blocker.radius + BODY_RADIUS }
-          : {
+        blocker.kind === 'box'
+          ? {
               ...blocker,
               halfX: blocker.halfX + BODY_RADIUS,
               halfZ: blocker.halfZ + BODY_RADIUS,
-            };
+            }
+          : { ...blocker, radius: blocker.radius + BODY_RADIUS };
       if (pushOutOf(grown, position)) moved = true;
     }
     if (!moved) return;
@@ -423,15 +424,16 @@ export class TravelerController {
     // means half the body is inside the rock beside them. Standing on the
     // highest thing under any part of you is what keeps you on top of an edge
     // instead of in it.
+    // The land is sampled across the whole footprint, because asking a height
+    // field five times costs nothing. The ledge is traced once, at the middle:
+    // five rays against a scanned rock is thousands of triangle tests a frame,
+    // which is felt as a stutter exactly where the big rocks are.
     let highest = -Infinity;
     for (const [offsetX, offsetZ] of FOOTPRINT) {
-      const sampleX = x + offsetX;
-      const sampleZ = z + offsetZ;
-      const terrain = this.surface.getHeightAt(sampleX, sampleZ);
-      const ledge = this.ledgeUnder(sampleX, sampleZ, standing);
-      highest = Math.max(highest, ledge === null ? terrain : Math.max(terrain, ledge));
+      highest = Math.max(highest, this.surface.getHeightAt(x + offsetX, z + offsetZ));
     }
-    return highest;
+    const ledge = this.ledgeUnder(x, z, standing);
+    return ledge === null ? highest : Math.max(highest, ledge);
   }
 
   /**

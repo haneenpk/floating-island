@@ -28,7 +28,21 @@ export interface BoxBlocker {
   yaw: number;
 }
 
-export type Blocker = RoundBlocker | BoxBlocker;
+/**
+ * A run of fence, or anything else long and thin: two ends and a thickness.
+ * Clustering a rail into circles puts them beside the wood rather than on it —
+ * a line has to be answered as a line.
+ */
+export interface SegmentBlocker {
+  kind: 'segment';
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  radius: number;
+}
+
+export type Blocker = RoundBlocker | BoxBlocker | SegmentBlocker;
 
 /**
  * Push a point out of a blocker, in island space.
@@ -49,6 +63,34 @@ export function pushOutOf(blocker: Blocker, position: { x: number; z: number }):
     }
     position.x = blocker.x + (dx / distance) * blocker.radius;
     position.z = blocker.z + (dz / distance) * blocker.radius;
+    return true;
+  }
+
+  if (blocker.kind === 'segment') {
+    // nearest point on the rail, then the same push as a circle around it
+    const runX = blocker.x2 - blocker.x1;
+    const runZ = blocker.z2 - blocker.z1;
+    const lengthSquared = runX * runX + runZ * runZ;
+    let along = 0;
+    if (lengthSquared > 1e-8) {
+      along =
+        ((position.x - blocker.x1) * runX + (position.z - blocker.z1) * runZ) / lengthSquared;
+      along = Math.min(Math.max(along, 0), 1);
+    }
+    const nearX = blocker.x1 + runX * along;
+    const nearZ = blocker.z1 + runZ * along;
+    const dx = position.x - nearX;
+    const dz = position.z - nearZ;
+    const distance = Math.hypot(dx, dz);
+    if (distance >= blocker.radius) return false;
+    if (distance < 1e-4) {
+      // dead on the line: step off it across its own width
+      position.x = nearX + (runZ / Math.sqrt(lengthSquared || 1)) * blocker.radius;
+      position.z = nearZ - (runX / Math.sqrt(lengthSquared || 1)) * blocker.radius;
+      return true;
+    }
+    position.x = nearX + (dx / distance) * blocker.radius;
+    position.z = nearZ + (dz / distance) * blocker.radius;
     return true;
   }
 

@@ -457,7 +457,7 @@ export async function composeHeroIsland(
     house,
     smoke: smoke!,
     heroTree,
-    blockers: solidThings(island, heroTree),
+    blockers: solidThings(island, heroTree, garden.blockers),
     // the one thing on the island you stand *on* rather than beside
     ledges: springSlab ? [springSlab] : [],
   };
@@ -474,11 +474,17 @@ export async function composeHeroIsland(
  * on. They are stood upon instead, which the ground sampling already handles.
  * Only the trunk and the cottage are things you must go around.
  */
-function solidThings(island: FloatingIsland, heroTree: Group | null): Blocker[] {
+function solidThings(
+  island: FloatingIsland,
+  heroTree: Group | null,
+  garden: readonly Blocker[],
+): Blocker[] {
   const cottage = planarPoint(island, HOUSE_RADIAL, HOUSE_ANGLE);
 
   return [
     ...treeBoles(island, heroTree),
+    // the fence and the lamp post, as the garden itself laid them out
+    ...garden,
     // The cottage, turned to face the way its door does, and sized to the
     // stone base rather than the timber storey that overhangs it. The
     // overhang begins nearly three units up and the traveler stands under
@@ -518,6 +524,28 @@ function solidThings(island: FloatingIsland, heroTree: Group | null): Blocker[] 
  * generation time, never per frame.
  */
 function treeBoles(island: FloatingIsland, tree: Group | null): Blocker[] {
+  return uprightsIn(island, tree, {
+    spread: BOLE_SPREAD,
+    minPoints: BOLE_MIN_POINTS,
+    minRadius: BOLE_MIN_RADIUS,
+    margin: BOLE_MARGIN,
+    limit: 8,
+  });
+}
+
+interface ClusterRules {
+  spread: number;
+  minPoints: number;
+  minRadius: number;
+  margin: number;
+  limit: number;
+}
+
+function uprightsIn(
+  island: FloatingIsland,
+  tree: Group | null,
+  rules: ClusterRules,
+): Blocker[] {
   if (!tree) return [];
 
   const point = new Vector3();
@@ -553,11 +581,11 @@ function treeBoles(island: FloatingIsland, tree: Group | null): Blocker[] {
         nearest = bole;
       }
     }
-    if (nearest && nearestGap < BOLE_SPREAD) {
+    if (nearest && nearestGap < rules.spread) {
       nearest.x = (nearest.x * nearest.count + spot.x) / (nearest.count + 1);
       nearest.z = (nearest.z * nearest.count + spot.z) / (nearest.count + 1);
       nearest.count += 1;
-    } else if (boles.length < 8) {
+    } else if (boles.length < rules.limit) {
       boles.push({ x: spot.x, z: spot.z, count: 1, radius: 0 });
     }
   }
@@ -577,7 +605,7 @@ function treeBoles(island: FloatingIsland, tree: Group | null): Blocker[] {
   }
 
   const measured = boles
-    .filter((bole) => bole.count >= BOLE_MIN_POINTS)
+    .filter((bole) => bole.count >= rules.minPoints)
     .map((bole) => ({
       kind: "round" as const,
       x: bole.x,
@@ -585,16 +613,12 @@ function treeBoles(island: FloatingIsland, tree: Group | null): Blocker[] {
       // A cluster of a few verts can measure almost nothing across, which
       // would be a collider you walk straight through. No bole is thinner
       // than this in practice, so no collider is either.
-      radius: Math.max(bole.radius, BOLE_MIN_RADIUS) + BOLE_MARGIN,
+      radius: Math.max(bole.radius, rules.minRadius) + rules.margin,
     }));
 
   // If the mesh gave up nothing usable — a coarse LOD, a model that changed —
   // one circle at the tree's middle is worse than per-bole but far better
   // than a tree you can walk through.
-  if (measured.length === 0) {
-    const centre = planarPoint(island, 0.3, 2.4);
-    return [{ kind: "round", x: centre.x, z: centre.z, radius: 1.6 }];
-  }
   return measured;
 }
 
