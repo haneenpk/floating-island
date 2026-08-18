@@ -9,6 +9,7 @@ import {
   type BufferGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { getQuality } from '../../core/Quality';
 import type { Time } from '../../core/Time';
 import type { Updatable } from '../Updatable';
 import { Hearth } from './Hearth';
@@ -107,9 +108,14 @@ export class CottageRoom extends Group implements Updatable {
     this.add(loftLight);
     // the last of the evening leaning in at the round window, so the loft is
     // not lit only by a fire two floors below
-    const windowLight = new PointLight(0xd7d9e4, 0.5, 8, 2);
-    windowLight.position.set(0, UPPER_Y + 1.6, ROOM_D / 2 - 1.1);
-    this.add(windowLight);
+    // Every light in a forward renderer is paid for by every lit pixel in the
+    // room, and this one is the faintest of them — the plainer tier keeps the
+    // fire and the two lamps, which are the ones you would miss.
+    if (getQuality().cottageLight) {
+      const windowLight = new PointLight(0xd7d9e4, 0.5, 8, 2);
+      windowLight.position.set(0, UPPER_Y + 1.6, ROOM_D / 2 - 1.1);
+      this.add(windowLight);
+    }
 
     // world matrix must be valid immediately: the portal samples world-space
     // poses (camera, exit door) before the first rendered frame
