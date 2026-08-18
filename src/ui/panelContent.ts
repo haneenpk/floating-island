@@ -244,7 +244,7 @@ export function getPanelContent(): Record<string, PanelContent> {
           ${plate(
             'the_island',
             'the island, adrift',
-            'Grown from a single number: the same seed always raises the same hill, carves the same river, and hangs the same roots beneath the rock.',
+            'Grown from a single number: the same seed always raises the same hill, carves the same river, and hangs the same roots beneath the rock. Somewhere in the meadow, someone is walking it.',
           )}
           ${plate(
             'the_doorway',
@@ -254,7 +254,7 @@ export function getPanelContent(): Record<string, PanelContent> {
           ${plate(
             'the_tree',
             'the great tree',
-            'Older than the floating itself. Lanterns hang where its branches will hold them, and a sister island drifts past beyond.',
+            'Older than the floating itself — not one trunk but several, splayed from the middle. Look up through it on the dusk side and the first stars are already out.',
           )}
           ${plate(
             'the_falls',
