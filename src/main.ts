@@ -81,6 +81,10 @@ function startExperience(): void {
   });
 }
 
+// Five controls in one line is a sentence, not a confirmation — it has to
+// stay up long enough to be read to the end, and then read again.
+const CONTROL_HINT_SECONDS = 6.5;
+
 // TESTING ONLY: boot straight into the cottage interior, skipping the
 // landing overlay, intro and journey. Set back to false to restore the
 // normal experience.
@@ -307,6 +311,7 @@ async function bootstrap(): Promise<void> {
       if (announce) {
         interaction.announce(
           'w a s d to walk — shift to run — space to jump — click to look — Esc to let go',
+          CONTROL_HINT_SECONDS,
         );
       }
     };
@@ -359,6 +364,7 @@ async function bootstrap(): Promise<void> {
       devEnterInside();
       interaction.announce(
         'move the mouse to look — w a s d to walk — E to interact — M for sound',
+        CONTROL_HINT_SECONDS,
       );
       window.addEventListener('pointerdown', () => void audio.begin(heroIsland), { once: true });
     } else {
