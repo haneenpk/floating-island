@@ -160,8 +160,10 @@ export class CottagePortal implements Updatable {
         this.interaction.setGroupEnabled('interior', true);
         if (this.houseDoor) this.houseDoor.target = 0;
         await this.fade.toClear(0.9);
+        // long enough to read a list of four controls, twice
         this.interaction.announce(
           'move the mouse to look — w a s d to walk — E to interact — M for sound',
+          6.5,
         );
         this.busy = false;
       })();

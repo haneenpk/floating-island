@@ -61,6 +61,8 @@ export class InteractionManager implements Updatable {
   private pointerDirty = false;
   /** what "close enough" is measured from — the camera unless told otherwise */
   private reachFrom: Object3D | null = null;
+  /** counts announcements, so an old one cannot clear a newer one */
+  private announcement = 0;
 
   constructor(private readonly camera: PerspectiveCamera) {
     this.caption = document.createElement('div');
@@ -206,15 +208,25 @@ export class InteractionManager implements Updatable {
     this.reachFrom = source;
   }
 
-  /** Flash a short message in the caption slot (activation feedback). */
-  announce(text: string): void {
+  /**
+   * Flash a message in the caption slot.
+   *
+   * The default suits a confirmation — a line you have already understood by
+   * the time you read it. A list of controls is not that: it has to survive
+   * being read, which takes longer than it takes to appear.
+   */
+  announce(text: string, seconds = 1.8): void {
     this.caption.textContent = text;
     this.caption.classList.add('visible');
     // the prompt redraws itself on the next frame it applies to
     this.prompted = null;
+    const shown = ++this.announcement;
     window.setTimeout(() => {
-      if (!this.prompted) this.caption.classList.remove('visible');
-    }, 1800);
+      // a later announcement has its own life; this one is over either way
+      if (!this.prompted && shown === this.announcement) {
+        this.caption.classList.remove('visible');
+      }
+    }, seconds * 1000);
   }
 
   /** The nearest marked object that is on screen and within reach. */

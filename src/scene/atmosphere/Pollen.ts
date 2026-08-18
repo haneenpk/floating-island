@@ -29,10 +29,16 @@ const vertexShader = /* glsl */ `
 
     vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
     gl_Position = projectionMatrix * mvPosition;
-    gl_PointSize = aSize * (140.0 / -mvPosition.z);
+    // Point size grows without limit as a mote nears the camera, and indoors
+    // the visitor walks right through the cloud: one mote a hand's breadth
+    // away becomes a sheet of paper lying on the floorboards. Capped, and
+    // faded out entirely over the last stride, so it goes rather than looms.
+    float depth = -mvPosition.z;
+    gl_PointSize = min(aSize * (140.0 / depth), 42.0);
 
     // twinkle gently so motes catch and lose the light
     vFade = 0.55 + 0.45 * sin(uTime * (0.5 + aSeed.x) + aSeed.y * 12.0);
+    vFade *= smoothstep(0.3, 1.3, depth);
     #include <fog_vertex>
   }
 `;
