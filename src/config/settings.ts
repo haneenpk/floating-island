@@ -50,7 +50,10 @@ export const settings = {
     sun: {
       color: 0xffbe78,
       intensity: 3.25,
-      position: { x: -56, y: 23, z: 26 },
+      // 13 degrees above the horizon rather than 20: the disc sits lower in
+      // the frame and the shadows lengthen to match, since the light and the
+      // sun you can see are the same thing.
+      position: { x: -56, y: 14, z: 26 },
       shadowFrustum: 46,
     },
     sky: {

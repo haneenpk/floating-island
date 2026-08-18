@@ -17,8 +17,16 @@ const vertexShader = /* glsl */ `
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
+// The sun's angular size, as cosines: it fades in from about 3.4 degrees off
+// centre and is solid within 2.2. Cosine rather than degrees because the
+// shader already has the dot product in hand.
+const SUN_EDGE = 0.99825;
+const SUN_CORE = 0.99926;
 
 const fragmentShader = /* glsl */ `
+  #define SUN_EDGE ${SUN_EDGE}
+  #define SUN_CORE ${SUN_CORE}
+
   uniform vec3 uZenithColor;
   uniform vec3 uHorizonWarm;
   uniform vec3 uHorizonCool;
@@ -27,6 +35,27 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uSunColor;
 
   varying vec3 vDirection;
+
+  float hash31(vec3 p) {
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+  }
+
+  // Stars, hashed straight out of the view direction: the sky is quantised
+  // into cells, a few of them are given a star, and each star is placed
+  // somewhere random inside its own cell so the field never reads as a grid.
+  // No geometry, no texture, no draw call — the dome was already being shaded.
+  float starField(vec3 direction, float scale, float rarity, float size) {
+    vec3 p = direction * scale;
+    vec3 cell = floor(p);
+    float pick = hash31(cell);
+    if (pick < rarity) return 0.0;
+
+    vec3 jitter = vec3(hash31(cell + 11.0), hash31(cell + 23.0), hash31(cell + 37.0));
+    float distance = length(fract(p) - 0.5 - (jitter - 0.5) * 0.55);
+    // brighter stars are rarer: reuse the pick as the magnitude
+    float magnitude = smoothstep(rarity, 1.0, pick);
+    return smoothstep(size, 0.0, distance) * (0.35 + 0.65 * magnitude);
+  }
 
   void main() {
     vec3 direction = normalize(vDirection);
@@ -46,9 +75,36 @@ const fragmentShader = /* glsl */ `
     vec3 color = mix(horizon, uZenithColor, pow(clamp(height, 0.0, 1.0), 0.55));
     color = mix(color, uGroundColor, smoothstep(0.02, -0.4, height));
 
-    float sunAmount = pow(max(dot(direction, uSunDirection), 0.0), 24.0);
-    float halo = pow(max(dot(direction, uSunDirection), 0.0), 4.0);
+    // Only where the warmth has run out. Golden hour is one-sided, so the
+    // side of the sky the sun has left goes dusk-blue — and that is the side
+    // the first stars come out on, high up, never down in the honey.
+    float duskward = smoothstep(0.45, -0.55, toward);
+    float aloft = smoothstep(0.0, 0.5, height);
+    float night = duskward * aloft;
+    if (night > 0.001) {
+      // two layers: a scatter of faint ones, and a few brighter that carry
+      // the eye. The dusk sky is still bright, so they have to be brighter
+      // than a real first magnitude would be to read against it at all.
+      float field = starField(direction, 165.0, 0.972, 0.135)
+                  + starField(direction, 78.0, 0.986, 0.185) * 1.6;
+      color += vec3(0.86, 0.90, 1.0) * field * night * 1.9;
+    }
+
+    float cosAngle = max(dot(direction, uSunDirection), 0.0);
+    float sunAmount = pow(cosAngle, 24.0);
+    float halo = pow(cosAngle, 4.0);
     color += uSunColor * (sunAmount * 0.5 + halo * 0.12);
+
+    // The sun itself. Wider than the real one by some margin — an
+    // astronomically correct half-degree disc is a speck at this field of
+    // view — and with a soft rim, so it sits in the haze rather than being
+    // stamped on it. Bright enough that the bloom finds it on the tier that
+    // has bloom.
+    float disc = smoothstep(SUN_EDGE, SUN_CORE, cosAngle);
+    // a low sun is swallowed by its own horizon: fade the disc as it sets so
+    // it never floats over the cloud sea like a lamp
+    float risen = smoothstep(-0.02, 0.16, uSunDirection.y);
+    color = mix(color, uSunColor * 1.9, disc * risen);
 
     gl_FragColor = vec4(color, 1.0);
 
